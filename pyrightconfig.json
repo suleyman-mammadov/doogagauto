@@ -1,0 +1,22 @@
+{
+    "include": [
+        "."
+    ],
+    "venvPath": ".",
+    "venv": ".venv",
+    "extraPaths": [
+        ".",
+        ".venv/Lib/site-packages",
+        "C:\\Users\\mammadofficial\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages"
+    ],
+    "typeCheckingMode": "off",
+    "reportMissingImports": "none",
+    "reportMissingModuleSource": "none",
+    "reportOptionalMemberAccess": "none",
+    "reportOptionalSubscript": "none",
+    "reportAttributeAccessIssue": "none",
+    "reportGeneralTypeIssues": "none",
+    "reportArgumentType": "none",
+    "reportReturnType": "none",
+    "reportMissingTypeStubs": false
+}

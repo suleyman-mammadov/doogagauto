@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Message Card Templates | DoogagAuto{% endblock %}
+{% block header_title %}Car Alert Card Message Format Editor{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Success / Reset Alerts -->
+    {% if is_saved %}
+    <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-400"></i>
+            <span>Message card templates have been successfully updated in database and memory cache!</span>
+        </div>
+        <a href="/admin/templates" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></a>
+    </div>
+    {% endif %}
+
+    {% if is_reset %}
+    <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-rotate-left text-amber-400"></i>
+            <span>Templates have been reset to system defaults.</span>
+        </div>
+        <a href="/admin/templates" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></a>
+    </div>
+    {% endif %}
+
+    <!-- Top instructions banner -->
+    <div class="glass-card p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> Full Control Over Telegram Alert Layout
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+                Customize every line, emoji, spacing, and arbitrage metric sent to user topics. Click any tag below to insert it into your template.
+            </p>
+        </div>
+        <form action="/admin/templates/reset" method="POST" onsubmit="return confirm('Reset all message templates to system default?');">
+            <button type="submit" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-bold transition flex items-center gap-2">
+                <i class="fa-solid fa-rotate-left"></i> Reset to Default
+            </button>
+        </form>
+    </div>
+
+    <!-- Available Variables Pills -->
+    <div class="glass-card p-4 rounded-2xl border border-slate-800">
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+            <i class="fa-solid fa-tags text-emerald-400 mr-1.5"></i> Clickable Template Variables (Dəyişənlər)
+        </span>
+        <div class="flex flex-wrap gap-1.5">
+            <button type="button" onclick="insertTag('{header_badge}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{header_badge}</button>
+            <button type="button" onclick="insertTag('{country_badge}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{country_badge}</button>
+            <button type="button" onclick="insertTag('{platform}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{platform}</button>
+            <button type="button" onclick="insertTag('{title}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{title}</button>
+            <button type="button" onclick="insertTag('{year}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{year}</button>
+            <button type="button" onclick="insertTag('{mileage}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{mileage}</button>
+            <button type="button" onclick="insertTag('{fuel_type}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{fuel_type}</button>
+            <button type="button" onclick="insertTag('{transmission}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{transmission}</button>
+            <button type="button" onclick="insertTag('{specs_text}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{specs_text}</button>
+            <button type="button" onclick="insertTag('{price_eur}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{price_eur}</button>
+            <button type="button" onclick="insertTag('{price_pln}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{price_pln}</button>
+            <button type="button" onclick="insertTag('{poland_median_pln}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{poland_median_pln}</button>
+            <button type="button" onclick="insertTag('{poland_median_eur}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{poland_median_eur}</button>
+            <button type="button" onclick="insertTag('{transport_cost_pln}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{transport_cost_pln}</button>
+            <button type="button" onclick="insertTag('{akcyza_percent}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{akcyza_percent}</button>
+            <button type="button" onclick="insertTag('{akcyza_cost_pln}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{akcyza_cost_pln}</button>
+            <button type="button" onclick="insertTag('{registration_cost_pln}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{registration_cost_pln}</button>
+            <button type="button" onclick="insertTag('{total_landed_cost_pln}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{total_landed_cost_pln}</button>
+            <button type="button" onclick="insertTag('{profit_emoji}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{profit_emoji}</button>
+            <button type="button" onclick="insertTag('{profit_pln}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{profit_pln}</button>
+            <button type="button" onclick="insertTag('{profit_eur}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{profit_eur}</button>
+            <button type="button" onclick="insertTag('{profit_margin}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{profit_margin}</button>
+            <button type="button" onclick="insertTag('{sponsor_text}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{sponsor_text}</button>
+            <button type="button" onclick="insertTag('{url}')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition">{url}</button>
+        </div>
+    </div>
+
+    <!-- Main Editor + Live Preview Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Editor Form (7 columns) -->
+        <div class="lg:col-span-7 glass-card p-6 rounded-2xl border border-slate-800">
+            <form action="/admin/templates" method="POST" class="space-y-6">
+                <!-- Standard Opportunity Template -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-bold text-white flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+                            Standard Listing Alert Template
+                        </label>
+                        <span class="text-[11px] text-slate-500">HTML supported: &lt;b&gt;, &lt;i&gt;, &lt;a&gt;, &lt;code&gt;</span>
+                    </div>
+                    <textarea id="standardTemplateInput" name="standard_template" rows="11" required
+                              class="w-full p-3.5 rounded-xl bg-slate-950 border border-slate-700/80 text-slate-200 font-mono text-xs focus:outline-none focus:border-emerald-500 leading-relaxed">{{ templates.standard_template }}</textarea>
+                </div>
+
+                <!-- Hot Deal Template -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-bold text-white flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                            Hot Deal Alert Template (≥15% below market or ≥1500€ profit)
+                        </label>
+                    </div>
+                    <textarea id="hotDealTemplateInput" name="hot_deal_template" rows="12" required
+                              class="w-full p-3.5 rounded-xl bg-slate-950 border border-slate-700/80 text-slate-200 font-mono text-xs focus:outline-none focus:border-emerald-500 leading-relaxed">{{ templates.hot_deal_template }}</textarea>
+                </div>
+
+                <div class="pt-2 flex justify-between items-center">
+                    <button type="button" onclick="refreshPreview()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition flex items-center gap-2">
+                        <i class="fa-solid fa-arrows-rotate"></i> Refresh Preview
+                    </button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Save All Templates
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Live Telegram Preview (5 columns) -->
+        <div class="lg:col-span-5 space-y-4">
+            <div class="glass-card p-6 rounded-2xl border border-slate-800">
+                <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-brands fa-telegram text-sky-400 text-lg"></i>
+                        <h3 class="font-bold text-sm text-white">Live Telegram Preview</h3>
+                    </div>
+                    <!-- Mode Switch -->
+                    <div class="flex bg-slate-900 rounded-lg p-0.5 border border-slate-800">
+                        <button type="button" id="previewModeStandard" onclick="setPreviewMode('standard')" class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-800 text-emerald-400 transition">
+                            Standard
+                        </button>
+                        <button type="button" id="previewModeHot" onclick="setPreviewMode('hot')" class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-400 hover:text-white transition">
+                            Hot Deal
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Realistic Telegram Bubble -->
+                <div class="bg-[#182533] p-4 rounded-2xl border border-[#243447] text-white shadow-xl relative">
+                    <div class="flex items-center gap-2 mb-2 pb-2 border-b border-slate-700/40">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="text-[11px] font-bold text-sky-300">DoogagAuto Scanner Bot</span>
+                        <span class="text-[10px] text-slate-400 ml-auto">12:45 PM</span>
+                    </div>
+
+                    <!-- Rendered HTML Card -->
+                    <div id="previewCardBody" class="text-xs leading-relaxed font-sans whitespace-pre-wrap text-slate-100">
+                        Loading preview...
+                    </div>
+
+                    <!-- Action Button Simulation -->
+                    <div class="mt-4 pt-3 border-t border-slate-700/50">
+                        <div class="w-full py-2 px-3 rounded-xl bg-[#2b5278] hover:bg-[#32618e] text-white text-center font-bold text-xs flex items-center justify-center gap-2 shadow transition">
+                            <span>🔗 View Listing ↗️</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-[11px] text-slate-500 mt-3 text-center">
+                    <i class="fa-solid fa-eye mr-1"></i> Preview renders live sample data (BMW 530d xDrive, 28 500 €)
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeTextarea = 'standardTemplateInput';
+    let currentPreviewMode = 'standard';
+
+    document.getElementById('standardTemplateInput').addEventListener('focus', () => {
+        activeTextarea = 'standardTemplateInput';
+    });
+    document.getElementById('hotDealTemplateInput').addEventListener('focus', () => {
+        activeTextarea = 'hotDealTemplateInput';
+    });
+
+    function insertTag(tag) {
+        const textarea = document.getElementById(activeTextarea);
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        textarea.value = text.substring(0, start) + tag + text.substring(end);
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+        refreshPreview();
+    }
+
+    function setPreviewMode(mode) {
+        currentPreviewMode = mode;
+        const btnStd = document.getElementById('previewModeStandard');
+        const btnHot = document.getElementById('previewModeHot');
+
+        if (mode === 'standard') {
+            btnStd.classList.add('bg-slate-800', 'text-emerald-400');
+            btnStd.classList.remove('text-slate-400');
+            btnHot.classList.remove('bg-slate-800', 'text-emerald-400');
+            btnHot.classList.add('text-slate-400');
+        } else {
+            btnHot.classList.add('bg-slate-800', 'text-emerald-400');
+            btnHot.classList.remove('text-slate-400');
+            btnStd.classList.remove('bg-slate-800', 'text-emerald-400');
+            btnStd.classList.add('text-slate-400');
+        }
+        refreshPreview();
+    }
+
+    function refreshPreview() {
+        const isHot = (currentPreviewMode === 'hot');
+        const tpl = isHot ? document.getElementById('hotDealTemplateInput').value : document.getElementById('standardTemplateInput').value;
+
+        fetch('/api/templates/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ template: tpl, is_hot_deal: isHot })
+        })
+        .then(res => res.json())
+        .then(data => {
+            const box = document.getElementById('previewCardBody');
+            if (data.success) {
+                box.innerHTML = data.html;
+            } else {
+                box.innerHTML = '<span class="text-rose-400">Preview rendering error: ' + (data.error || 'Unknown') + '</span>';
+            }
+        })
+        .catch(err => {
+            console.error('Preview error:', err);
+        });
+    }
+
+    // Debounced live typing update
+    let debounceTimer = null;
+    function setupDebounce(elemId) {
+        document.getElementById(elemId).addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(refreshPreview, 400);
+        });
+    }
+    setupDebounce('standardTemplateInput');
+    setupDebounce('hotDealTemplateInput');
+
+    // Initial preview load
+    window.addEventListener('DOMContentLoaded', refreshPreview);
+</script>
+{% endblock %}

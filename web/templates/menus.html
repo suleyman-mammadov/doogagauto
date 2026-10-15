@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Menus & Filter Options | DoogagAuto{% endblock %}
+{% block header_title %}Bot Navigation & Dynamic Filter Options{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Top info alert -->
+    <div class="glass-card p-4 rounded-2xl border border-slate-800 flex items-center justify-between text-xs text-slate-300">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center text-sm">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <div>
+                <span class="font-bold text-white block">No Code Modifications Required</span>
+                <span class="text-slate-400">Add or edit car makes, models, and multilingual button texts dynamically without restarting the bot.</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/30">
+                <i class="fa-solid fa-bolt mr-1"></i> Live DB Sync
+            </span>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex border-b border-slate-800 gap-2">
+        <button id="tabMakesBtn" onclick="switchTab('makes')" class="px-5 py-3 text-xs font-bold transition rounded-t-xl border-b-2 border-emerald-500 text-emerald-400 bg-slate-900/40 flex items-center gap-2">
+            <i class="fa-solid fa-car-side"></i> Car Makes & Models (Markalar və Modellər)
+        </button>
+        <button id="tabButtonsBtn" onclick="switchTab('buttons')" class="px-5 py-3 text-xs font-bold transition rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-2">
+            <i class="fa-solid fa-language"></i> Button Labels & Translations (Menyu Mətnləri)
+        </button>
+    </div>
+
+    <!-- TAB 1: MAKES & MODELS -->
+    <div id="tabMakesContent" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left: Car Makes (5 columns) -->
+        <div class="lg:col-span-5 glass-card p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+                    <div>
+                        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                            <i class="fa-solid fa-car text-emerald-400"></i> Supported Makes
+                        </h3>
+                        <p class="text-xs text-slate-400">Click a brand to manage its models</p>
+                    </div>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                        {{ makes|length }} Brands
+                    </span>
+                </div>
+
+                <!-- Add Make Form -->
+                <form action="/admin/menus/makes/add" method="POST" class="mb-4 flex gap-2">
+                    <input type="text" name="name" required placeholder="New Make (e.g. Tesla, BYD)"
+                           class="flex-1 py-2 px-3 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500">
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Add
+                    </button>
+                </form>
+
+                <!-- Makes List -->
+                <div class="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
+                    {% for m in makes %}
+                    <div id="makeRow_{{ m.id }}" onclick="selectMake('{{ m.id }}', '{{ m.name }}')"
+                         class="make-row p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/80 flex items-center justify-between cursor-pointer transition {% if loop.first %}border-emerald-500/40 bg-slate-800/90{% endif %}">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 text-xs font-bold">
+                                {{ m.name[0] }}
+                            </div>
+                            <span class="font-semibold text-xs text-white">{{ m.name }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700/50">
+                                {{ m.model_count }} models
+                            </span>
+                            <form action="/admin/menus/makes/{{ m.id }}/delete" method="POST" onsubmit="return confirm('Delete brand {{ m.name }} and all its models?');" onclick="event.stopPropagation();" class="inline">
+                                <button type="submit" class="w-6 h-6 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center text-xs transition" title="Delete Make">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="p-8 text-center text-xs text-slate-500">
+                        No car makes added yet.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Models for Selected Make (7 columns) -->
+        <div class="lg:col-span-7 glass-card p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+                    <div>
+                        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                            <i class="fa-solid fa-list-ul text-emerald-400"></i> Models for <span id="currentMakeTitle" class="text-emerald-400 underline decoration-emerald-500/30">{% if makes %}{{ makes[0].name }}{% else %}None{% endif %}</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">These models appear as quick-filter buttons in Telegram bot</p>
+                    </div>
+                    <span id="modelCounterBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                        {{ first_make_models|length }} Models
+                    </span>
+                </div>
+
+                <!-- Add Model Form -->
+                <form id="addModelForm" action="/admin/menus/models/add" method="POST" class="mb-4 flex gap-2">
+                    <input type="hidden" name="make_id" id="selectedMakeIdInput" value="{% if makes %}{{ makes[0].id }}{% else %}0{% endif %}">
+                    <input type="text" name="name" id="newModelNameInput" required placeholder="New Model (e.g. Model 3, Plaid, M340i)"
+                           class="flex-1 py-2 px-3 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500">
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Add Model
+                    </button>
+                </form>
+
+                <!-- Models Grid Container -->
+                <div id="modelsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-[480px] overflow-y-auto pr-1">
+                    {% for mdl in first_make_models %}
+                    <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs group hover:border-slate-700 transition">
+                        <span class="font-medium text-slate-200">{{ mdl.name }}</span>
+                        <form action="/admin/menus/models/{{ mdl.id }}/delete" method="POST" onsubmit="return confirm('Remove model {{ mdl.name }}?');" class="inline">
+                            <button type="submit" class="opacity-60 group-hover:opacity-100 text-rose-400 hover:text-rose-300 transition text-[11px] p-1" title="Delete Model">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div id="noModelsMsg" class="col-span-full p-8 text-center text-xs text-slate-500">
+                        No specific models added for this brand yet.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mt-4 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400">
+                <i class="fa-solid fa-info-circle text-emerald-400 mr-1.5"></i>
+                Users can always type custom models in Telegram if not listed in the quick-selection buttons.
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: BUTTON LABELS & TRANSLATIONS -->
+    <div id="tabButtonsContent" class="glass-card p-6 rounded-2xl border border-slate-800 hidden">
+        <div class="pb-4 mb-6 border-b border-slate-800 flex items-center justify-between">
+            <div>
+                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                    <i class="fa-solid fa-language text-emerald-400"></i> Bot Menu Buttons & Translations
+                </h3>
+                <p class="text-xs text-slate-400">Customize button names in English, Polish, and Russian. Saved changes apply immediately in Telegram.</p>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            {% for btn in buttons %}
+            <form action="/admin/menus/buttons/update" method="POST" class="p-4 rounded-xl bg-slate-900/70 border border-slate-800/80 hover:border-slate-700 transition">
+                <input type="hidden" name="button_key" value="{{ btn.button_key }}">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="md:w-1/4">
+                        <span class="text-xs font-mono font-bold text-emerald-400 block">{{ btn.button_key }}</span>
+                        <span class="text-[10px] text-slate-500 uppercase tracking-wider">{{ btn.category }} menu</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">🇬🇧 English</label>
+                            <input type="text" name="label_en" value="{{ btn.label_en }}" required
+                                   class="w-full py-1.5 px-3 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">🇵🇱 Polski</label>
+                            <input type="text" name="label_pl" value="{{ btn.label_pl }}" required
+                                   class="w-full py-1.5 px-3 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">🇷🇺 Русский</label>
+                            <input type="text" name="label_ru" value="{{ btn.label_ru }}" required
+                                   class="w-full py-1.5 px-3 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full md:w-auto px-4 py-2 rounded-xl bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 font-bold text-xs border border-slate-700 transition">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i> Save
+                        </button>
+                    </div>
+                </div>
+            </form>
+            {% else %}
+            <div class="p-8 text-center text-xs text-slate-500">
+                No configurable buttons found in database.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tab) {
+        const makesBtn = document.getElementById('tabMakesBtn');
+        const buttonsBtn = document.getElementById('tabButtonsBtn');
+        const makesContent = document.getElementById('tabMakesContent');
+        const buttonsContent = document.getElementById('tabButtonsContent');
+
+        if (tab === 'makes') {
+            makesBtn.classList.add('border-emerald-500', 'text-emerald-400', 'bg-slate-900/40');
+            makesBtn.classList.remove('border-transparent', 'text-slate-400');
+            buttonsBtn.classList.remove('border-emerald-500', 'text-emerald-400', 'bg-slate-900/40');
+            buttonsBtn.classList.add('border-transparent', 'text-slate-400');
+            makesContent.classList.remove('hidden');
+            buttonsContent.classList.add('hidden');
+        } else {
+            buttonsBtn.classList.add('border-emerald-500', 'text-emerald-400', 'bg-slate-900/40');
+            buttonsBtn.classList.remove('border-transparent', 'text-slate-400');
+            makesBtn.classList.remove('border-emerald-500', 'text-emerald-400', 'bg-slate-900/40');
+            makesBtn.classList.add('border-transparent', 'text-slate-400');
+            buttonsContent.classList.remove('hidden');
+            makesContent.classList.add('hidden');
+        }
+    }
+
+    function selectMake(makeId, makeName) {
+        document.querySelectorAll('.make-row').forEach(el => {
+            el.classList.remove('border-emerald-500/40', 'bg-slate-800/90');
+        });
+        const selectedRow = document.getElementById('makeRow_' + makeId);
+        if (selectedRow) {
+            selectedRow.classList.add('border-emerald-500/40', 'bg-slate-800/90');
+        }
+
+        document.getElementById('currentMakeTitle').textContent = makeName;
+        document.getElementById('selectedMakeIdInput').value = makeId;
+
+        // Fetch models via API
+        fetch('/api/makes/' + makeId + '/models')
+            .then(res => res.json())
+            .then(data => {
+                const grid = document.getElementById('modelsGrid');
+                grid.innerHTML = '';
+                const models = data.models || [];
+                document.getElementById('modelCounterBadge').textContent = models.length + ' Models';
+
+                if (models.length === 0) {
+                    grid.innerHTML = '<div class="col-span-full p-8 text-center text-xs text-slate-500">No specific models added for this brand yet.</div>';
+                    return;
+                }
+
+                models.forEach(mdl => {
+                    const card = document.createElement('div');
+                    card.className = 'p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs group hover:border-slate-700 transition';
+                    card.innerHTML = `
+                        <span class="font-medium text-slate-200">${mdl.name}</span>
+                        <form action="/admin/menus/models/${mdl.id}/delete" method="POST" onsubmit="return confirm('Remove model ${mdl.name}?');" class="inline">
+                            <button type="submit" class="opacity-60 group-hover:opacity-100 text-rose-400 hover:text-rose-300 transition text-[11px] p-1" title="Delete Model">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </form>
+                    `;
+                    grid.appendChild(card);
+                });
+            })
+            .catch(err => {
+                console.error('Failed to load models:', err);
+            });
+    }
+</script>
+{% endblock %}

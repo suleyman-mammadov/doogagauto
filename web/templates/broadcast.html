@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Broadcast Messaging | DoogagAuto{% endblock %}
+{% block header_title %}Broadcast Messaging & Campaigns{% endblock %}
+
+{% block content %}
+<!-- Live Status Card (Auto-updating Real-Time Progress) -->
+<div id="liveBroadcastBox" class="glass-card p-6 rounded-2xl border border-emerald-500/40 glow-brand {% if not is_running %}hidden{% endif %} transition-all duration-300">
+    <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+            <span class="w-3.5 h-3.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <div>
+                <h3 class="font-bold text-white text-base">Live Background Broadcast in Progress</h3>
+                <span id="liveCampaignTargetType" class="text-[11px] text-emerald-300 font-mono">Connecting to Telegram worker...</span>
+            </div>
+        </div>
+        <form action="/admin/broadcast/cancel" method="POST" class="inline" onsubmit="return confirm('Stop active broadcast immediately?');">
+            <button type="submit" class="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/40 text-xs font-bold transition flex items-center gap-2">
+                <i class="fa-solid fa-stop"></i> Stop Broadcast
+            </button>
+        </form>
+    </div>
+
+    <!-- Live Counters Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+        <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span class="text-[11px] text-slate-400 block font-medium">Total Targets</span>
+            <span id="liveTotal" class="text-base font-extrabold text-white">0</span>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span class="text-[11px] text-emerald-400 block font-medium">Successfully Delivered</span>
+            <span id="liveSent" class="text-base font-extrabold text-emerald-400">0</span>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span class="text-[11px] text-rose-400 block font-medium">Failed / Blocked</span>
+            <span id="liveFailed" class="text-base font-extrabold text-rose-400">0</span>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span class="text-[11px] text-slate-400 block font-medium">Anti-Flood Jitter Delay</span>
+            <span id="liveDelay" class="text-base font-extrabold text-sky-400 font-mono">0.0s</span>
+        </div>
+    </div>
+
+    <!-- Animated Progress Bar -->
+    <div class="w-full h-3.5 rounded-full bg-slate-900 border border-slate-800 overflow-hidden mb-2">
+        <div id="progressBarFill" class="h-full bg-gradient-to-r from-emerald-500 via-green-400 to-teal-400 transition-all duration-300" style="width: 0%;"></div>
+    </div>
+    <div class="flex items-center justify-between text-xs font-semibold text-slate-400">
+        <span id="progressPercent">0% Completed</span>
+        <span id="liveRemaining">Calculating remaining topics...</span>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Broadcast Form (7 columns) -->
+    <div class="lg:col-span-7 glass-card p-6 rounded-2xl border border-slate-800">
+        <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
+            <div>
+                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                    <i class="fa-solid fa-tower-broadcast text-emerald-400"></i> Create New Broadcast Campaign
+                </h3>
+                <p class="text-xs text-slate-400">Send mass announcements to individual forum topics or registered bot users</p>
+            </div>
+        </div>
+
+        <form action="/admin/broadcast/launch" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Campaign Title (Internal Note)</label>
+                <input type="text" name="title" required placeholder="e.g. Autumn Shipping Discount"
+                       class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Target Audience</label>
+                <select name="target_type" class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500">
+                    <option value="active_topics">📢 Send to All Active Forum Topics</option>
+                    <option value="all_topics">📁 Send to All Topics (Active + Paused)</option>
+                    <option value="all_users">👤 Send to All Registered Users in Direct Messages (DM)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Message Text (HTML Supported)</label>
+                <textarea name="message_text" required rows="5"
+                          placeholder="🔥 <b>Special Announcement!</b>&#10;&#10;New cars from Lithuania and Germany are scanned with high arbitrage profits!&#10;&#10;Check out our recommended deals below."
+                          class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500 font-sans"></textarea>
+                <span class="text-[11px] text-slate-500 mt-1 block">HTML tags supported: <code>&lt;b&gt;bold&lt;/b&gt;</code>, <code>&lt;i&gt;italic&lt;/i&gt;</code>, <code>&lt;a href="..."&gt;link&lt;/a&gt;</code></span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Image URL (Optional)</label>
+                <input type="url" name="image_url" placeholder="https://example.com/banner.jpg"
+                       class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Button Text (Optional)</label>
+                    <input type="text" name="button_name" placeholder="Learn More ↗️"
+                           class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Button Link (URL)</label>
+                    <input type="url" name="button_url" placeholder="https://mywebsite.com/promo"
+                           class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono">
+                </div>
+            </div>
+
+            <div class="pt-4 flex justify-end">
+                <button type="submit" id="submitBroadcastBtn" {% if is_running %}disabled{% endif %}
+                        class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Launch Broadcast
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Campaigns History (5 columns) -->
+    <div class="lg:col-span-5 glass-card p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+                <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> Past Campaigns & Management
+                </h3>
+                <span class="text-xs text-slate-500">Audit Log</span>
+            </div>
+
+            <div class="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                {% for c in campaigns %}
+                <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-xs text-white">{{ c.title }}</span>
+                        {% if c.status == 'completed' %}
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Completed ✅</span>
+                        {% elif c.status == 'running' %}
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse">Running ⏳</span>
+                        {% elif c.status == 'deleted' %}
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">Deleted in TG 🗑️</span>
+                        {% elif c.status == 'cancelled' %}
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">Cancelled ⏹</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">{{ c.status|upper }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="text-[11px] text-slate-400 line-clamp-2">
+                        {{ c.message_text }}
+                    </div>
+
+                    <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800/60">
+                        <span>Total: <b>{{ c.total_targets }}</b> (Sent: {{ c.sent_count }}, Failed: {{ c.failed_count }})</span>
+                        <span>{{ c.created_at[:16] if c.created_at else '' }}</span>
+                    </div>
+
+                    <!-- Campaign Actions: Delete from Telegram & Delete Record -->
+                    <div class="pt-2 flex items-center justify-end gap-2 border-t border-slate-800/40">
+                        {% if c.status != 'deleted' and c.status != 'running' %}
+                        <form action="/admin/broadcast/{{ c.id }}/delete-messages" method="POST" onsubmit="return confirm('⚠️ Delete sent messages for this campaign from Telegram topics? This cannot be undone.');">
+                            <button type="submit" class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold transition flex items-center gap-1">
+                                <i class="fa-solid fa-eraser"></i> Delete from Telegram
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        <form action="/admin/broadcast/{{ c.id }}/delete" method="POST" onsubmit="return confirm('Delete this campaign audit record from database?');">
+                            <button type="submit" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 text-[10px] font-bold transition" title="Delete Audit Record">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <div class="p-8 text-center text-xs text-slate-500">
+                    No broadcast campaigns have been run yet.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mt-4 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400">
+            <i class="fa-solid fa-shield-halved text-emerald-400 mr-1.5"></i>
+            All broadcasts are executed asynchronously adhering to Telegram rate limits.
+        </div>
+    </div>
+</div>
+
+<script>
+    let isCurrentlyRunning = {% if is_running %}true{% else %}false{% endif %};
+
+    function pollBroadcastStatus() {
+        fetch('/api/broadcast/status')
+            .then(res => res.json())
+            .then(data => {
+                const box = document.getElementById('liveBroadcastBox');
+                const submitBtn = document.getElementById('submitBroadcastBtn');
+
+                if (data.is_running) {
+                    box.classList.remove('hidden');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                    }
+
+                    document.getElementById('liveTotal').textContent = data.total_targets || 0;
+                    document.getElementById('liveSent').textContent = data.sent_count || 0;
+                    document.getElementById('liveFailed').textContent = data.failed_count || 0;
+                    document.getElementById('liveDelay').textContent = (data.last_delay || 0) + 's';
+
+                    const percent = data.percent || 0;
+                    document.getElementById('progressBarFill').style.width = percent + '%';
+                    document.getElementById('progressPercent').textContent = percent + '% Completed (' + (data.current_index || 0) + ' / ' + (data.total_targets || 0) + ')';
+
+                    const rem = Math.max(0, (data.total_targets || 0) - (data.current_index || 0));
+                    document.getElementById('liveRemaining').textContent = rem + ' targets remaining';
+                    document.getElementById('liveCampaignTargetType').textContent = 'Target: ' + (data.target_type || 'topics').toUpperCase();
+
+                    isCurrentlyRunning = true;
+                } else {
+                    if (isCurrentlyRunning) {
+                        // Finished running: reload page to update history
+                        window.location.reload();
+                    }
+                }
+            })
+            .catch(err => {
+                console.debug('Polling error:', err);
+            });
+    }
+
+    // Poll every 1.8 seconds
+    setInterval(pollBroadcastStatus, 1800);
+    window.addEventListener('DOMContentLoaded', pollBroadcastStatus);
+</script>
+{% endblock %}

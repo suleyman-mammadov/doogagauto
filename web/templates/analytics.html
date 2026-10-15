@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Click Analytics | DoogagAuto{% endblock %}
+{% block header_title %}Click Tracking & Ad Gateway Analytics{% endblock %}
+
+{% block content %}
+<!-- Analytics Summary Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="glass-card p-5 rounded-2xl border border-slate-800">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Clicks</span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <i class="fa-solid fa-arrow-pointer text-xs"></i>
+            </div>
+        </div>
+        <div class="text-2xl font-extrabold text-white">{{ clicks|length }}</div>
+        <span class="text-[11px] text-slate-500 mt-1 block">Recent click activity</span>
+    </div>
+
+    <div class="glass-card p-5 rounded-2xl border border-slate-800">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Mobile Devices</span>
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <i class="fa-solid fa-mobile-screen text-xs"></i>
+            </div>
+        </div>
+        <div class="text-2xl font-extrabold text-white">
+            {{ mobile_clicks }}
+        </div>
+        <span class="text-[11px] text-slate-500 mt-1 block">Smartphone & tablet traffic</span>
+    </div>
+
+    <div class="glass-card p-5 rounded-2xl border border-slate-800">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Desktop Devices</span>
+            <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                <i class="fa-solid fa-laptop text-xs"></i>
+            </div>
+        </div>
+        <div class="text-2xl font-extrabold text-white">
+            {{ desktop_clicks }}
+        </div>
+        <span class="text-[11px] text-slate-500 mt-1 block">Desktop & browser traffic</span>
+    </div>
+
+    <div class="glass-card p-5 rounded-2xl border border-slate-800">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Internal Gateway</span>
+            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <i class="fa-solid fa-shield-halved text-xs"></i>
+            </div>
+        </div>
+        <div class="text-2xl font-extrabold text-white">100%</div>
+        <span class="text-[11px] text-slate-500 mt-1 block">Anonymous SHA-256 IP tracking</span>
+    </div>
+</div>
+
+<!-- Detailed Clicks Table -->
+<div class="glass-card rounded-2xl overflow-hidden border border-slate-800">
+    <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div>
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                <i class="fa-solid fa-table-list text-emerald-400"></i> Recorded Clicks Audit Log
+            </h3>
+            <p class="text-xs text-slate-400">On each click, IP is anonymized and redirected 302 to the target listing</p>
+        </div>
+        <span class="text-xs text-slate-400 font-mono">Last {{ clicks|length }} clicks</span>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase font-semibold">
+                <tr>
+                    <th class="p-3.5">ID</th>
+                    <th class="p-3.5">Source Topic</th>
+                    <th class="p-3.5">Listing ID</th>
+                    <th class="p-3.5">Device</th>
+                    <th class="p-3.5">Target URL</th>
+                    <th class="p-3.5">IP Hash</th>
+                    <th class="p-3.5">Timestamp</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                {% for c in clicks %}
+                <tr class="hover:bg-slate-800/30 transition">
+                    <td class="p-3.5 font-mono text-slate-500 font-bold">#{{ c.id }}</td>
+                    <td class="p-3.5 font-bold text-emerald-400">
+                        {% if c.source_topic_id %}
+                        #{{ c.source_topic_id }}
+                        {% else %}
+                        <span class="text-slate-600">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3.5 font-mono text-slate-400">{{ c.listing_id or '-' }}</td>
+                    <td class="p-3.5 whitespace-nowrap">
+                        {% if 'Mobile' in c.user_agent %}
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            <i class="fa-solid fa-mobile-screen mr-1"></i> Mobile
+                        </span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            <i class="fa-solid fa-laptop mr-1"></i> Desktop
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3.5 max-w-sm truncate font-mono text-[11px] text-slate-400" title="{{ c.target_url }}">
+                        <a href="{{ c.target_url }}" target="_blank" class="hover:text-emerald-400 transition">
+                            {{ c.target_url }}
+                        </a>
+                    </td>
+                    <td class="p-3.5 font-mono text-[11px] text-slate-500" title="{{ c.ip_hash }}">
+                        {{ c.ip_hash[:8] }}...
+                    </td>
+                    <td class="p-3.5 whitespace-nowrap text-slate-400">
+                        {{ c.clicked_at }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="p-8 text-center text-slate-500">
+                        No click analytics available yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

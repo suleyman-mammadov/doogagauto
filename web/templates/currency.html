@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+
+{% block title %}Valyuta Məzənnələri | DoogagAuto Admin{% endblock %}
+{% block header_title %}Valyuta Məzənnələri & Çevirici Mərkəzi{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header Description Banner -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 glass-card p-6 rounded-2xl border border-slate-800">
+        <div>
+            <h2 class="text-xl font-extrabold text-white tracking-wide flex items-center gap-2.5">
+                <i class="fa-solid fa-coins text-amber-400"></i>
+                Valyuta Məzənnələri & Canlı Avtomatik Sinxronizasiya
+            </h2>
+            <p class="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
+                Avropa Mərkəzi Bankının (ECB) rəsmi məzənnələrini birbaşa canlı çəkin və ya istədiyiniz məzənnəni əllə təyin edin. Bütün 9 skraper və Otomoto arbitraj kalkulyatoru dərhal bu məzənnələrlə hesablayır.
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                {{ rates.last_source or 'Rəsmi Məzənnə' }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Currency KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1: EUR / PLN -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">EUR / PLN</span>
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                    🇵🇱
+                </div>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <span class="text-2xl font-black text-emerald-400 font-mono">{{ rates.eur_to_pln }}</span>
+                <span class="text-xs text-slate-400 font-medium">PLN</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-2">
+                1 Avro = {{ rates.eur_to_pln }} Polşa Zlotısı (Otomoto)
+            </p>
+        </div>
+
+        <!-- Card 2: CZK / EUR -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">CZK / EUR</span>
+                <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs">
+                    🇨🇿
+                </div>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <span class="text-2xl font-black text-blue-400 font-mono">{{ rates.czk_to_eur }}</span>
+                <span class="text-xs text-slate-400 font-medium">EUR</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-2">
+                1 CZK = {{ rates.czk_to_eur }} € (1 € ≈ {{ rates.eur_to_czk }} CZK)
+            </p>
+        </div>
+
+        <!-- Card 3: EUR / USD -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">EUR / USD</span>
+                <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs">
+                    🇺🇸
+                </div>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <span class="text-2xl font-black text-purple-400 font-mono">{{ rates.eur_to_usd }}</span>
+                <span class="text-xs text-slate-400 font-medium">USD</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-2">
+                1 Avro = {{ rates.eur_to_usd }} ABŞ Dolları
+            </p>
+        </div>
+
+        <!-- Card 4: Last Updated Source -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Son Mənbə</span>
+                <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+            </div>
+            <div class="text-sm font-bold text-slate-200 truncate" title="{{ rates.last_source }}">
+                {{ rates.last_source or 'İlkin' }}
+            </div>
+            <p class="text-[11px] text-slate-500 mt-2">
+                Tarix: {{ rates.last_updated_at or 'Məlum deyil' }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Two Columns: Live Sync & Manual Configuration -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Column 1: Live ECB Sync (5 cols) -->
+        <div class="lg:col-span-5 glass-card p-6 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-5">
+            <div>
+                <div class="border-b border-slate-800 pb-3 mb-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-bolt text-amber-400"></i>
+                        Avtomatik Canlı Valyuta Çəkmə
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                        Rəsmi Avropa Mərkəzi Bankı (ECB) məlumat bazasından ən son güncəl məzənnələri birbaşa serverə çəkin.
+                    </p>
+                </div>
+
+                <div class="space-y-3 text-xs text-slate-400 leading-relaxed">
+                    <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+                        <div class="flex items-center gap-2 font-bold text-slate-200">
+                            <i class="fa-solid fa-building-columns text-emerald-400"></i>
+                            Rəsmi Avropa Mərkəzi Bankı (ECB)
+                        </div>
+                        <p class="text-[11px] text-slate-400">
+                            Frankfurter və OpenExchange açıq bank şlüzləri vasitəsilə ən dəqiq EUR/PLN və EUR/CZK məzənnələrini çəkir. Heç bir ödənişli API açarı tələb olunmur.
+                        </p>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+                        <div class="flex items-center gap-2 font-bold text-slate-200">
+                            <i class="fa-solid fa-bolt text-blue-400"></i>
+                            Dərhal Tətbiq
+                        </div>
+                        <p class="text-[11px] text-slate-400">
+                            Çəkilən məzənnələr bota və ya serverə restart vermədən dərhal canlı olaraq qüvvəyə minir.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sync Button Form -->
+            <form action="/admin/currency/sync-live" method="POST" class="pt-3 border-t border-slate-800">
+                <button type="submit" class="w-full py-3.5 px-4 rounded-xl font-bold text-xs bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-950/40 transition duration-150 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate text-sm"></i>
+                    Canlı Məzənnələri İndi Çək (ECB)
+                </button>
+            </form>
+        </div>
+
+        <!-- Column 2: Manual Rates Adjustment Form (7 cols) -->
+        <div class="lg:col-span-7 glass-card p-6 rounded-2xl border border-slate-800 space-y-5">
+            <div class="border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-emerald-400"></i>
+                    Məzənnələri Əllə Təyin Et (Manual Override)
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">
+                    İstədiyiniz fərdi məzənnəni daxil edərək arbitraj mənfəət hesablamalarını fərdiləşdirin.
+                </p>
+            </div>
+
+            <form action="/admin/currency/save" method="POST" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- EUR to PLN Input -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                            1 EUR neçə PLN edir? (Polşa Zlotısı)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 text-xs font-bold">
+                                1 € =
+                            </span>
+                            <input type="number" step="0.0001" min="1" max="10" name="eur_to_pln" id="input_eur_to_pln" value="{{ rates.eur_to_pln }}" required
+                                class="w-full pl-12 pr-4 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500 font-mono font-bold"
+                                oninput="updateLiveCalculations()">
+                        </div>
+                        <p class="text-[10px] text-slate-500">Otomoto.pl elanları ilə Polşa bazar mənfəəti üçün.</p>
+                    </div>
+
+                    <!-- CZK to EUR Input -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                            1 CZK neçə EUR edir? (Çex Korunası)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 text-xs font-bold">
+                                1 CZK =
+                            </span>
+                            <input type="number" step="0.00001" min="0.001" max="1" name="czk_to_eur" id="input_czk_to_eur" value="{{ rates.czk_to_eur }}" required
+                                class="w-full pl-16 pr-4 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 font-mono font-bold"
+                                oninput="updateLiveCalculations()">
+                        </div>
+                        <p class="text-[10px] text-slate-500">Sauto.cz və Bazos.cz maşınlarının Avroya çevrilməsi üçün.</p>
+                    </div>
+
+                    <!-- EUR to CZK (Inverse Helper) -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                            1 EUR neçə CZK edir? (Tərs məzənnə)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 text-xs font-bold">
+                                1 € =
+                            </span>
+                            <input type="number" step="0.01" min="10" max="50" name="eur_to_czk" id="input_eur_to_czk" value="{{ rates.eur_to_czk }}"
+                                class="w-full pl-12 pr-4 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 font-mono font-bold"
+                                oninput="syncInverseCzk()">
+                        </div>
+                        <p class="text-[10px] text-slate-500">Məsələn: 25.30 CZK.</p>
+                    </div>
+
+                    <!-- EUR to USD Input -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                            1 EUR neçə USD edir? (ABŞ Dolları)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 text-xs font-bold">
+                                1 € =
+                            </span>
+                            <input type="number" step="0.0001" min="0.5" max="3" name="eur_to_usd" id="input_eur_to_usd" value="{{ rates.eur_to_usd }}"
+                                class="w-full pl-12 pr-4 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500 font-mono font-bold">
+                        </div>
+                        <p class="text-[10px] text-slate-500">İstinad dollar məzənnəsi.</p>
+                    </div>
+                </div>
+
+                <!-- Auto Sync Checkbox -->
+                <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-white block">Gündəlik Avtomatik Sinxronizasiya</span>
+                        <span class="text-[11px] text-slate-400">Server açıldıqda ən son ECB məzənnələrini avtomatik yoxlasın</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="auto_sync" value="1" class="sr-only peer" {% if rates.auto_sync %}checked{% endif %}>
+                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-3 border-t border-slate-800 flex justify-end">
+                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/30 transition duration-150 flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        Məzənnələri Yadda Saxla və Tətbiq Et
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Live Calculation Interactive Simulator -->
+    <div class="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
+        <div class="border-b border-slate-800 pb-3">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-calculator text-blue-400"></i>
+                Canlı Məzənnə Simulyatoru (Nümunə Hesablamalar)
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+                Cari məzənnələrin elan qiymətlərinə və mənfəət hesablanmasına necə təsir etdiyini canlı yoxlayın.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Simulator 1: Germany EUR -> Poland PLN -->
+            <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
+                <span class="text-xs font-bold text-emerald-400 flex items-center gap-2 uppercase tracking-wider">
+                    🇩🇪 Almaniya Qiyməti (Avro) &rarr; 🇵🇱 Polşa Zlotısı
+                </span>
+                <div class="flex items-center gap-3">
+                    <div class="flex-1">
+                        <label class="block text-[11px] text-slate-400 mb-1">Avro Məbləği (€)</label>
+                        <input type="number" id="sim_eur_val" value="15000" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white font-mono font-bold" oninput="runSimCalc()">
+                    </div>
+                    <div class="text-slate-500 pt-5 text-lg">&rarr;</div>
+                    <div class="flex-1">
+                        <label class="block text-[11px] text-slate-400 mb-1">Polşa Dəyəri (PLN)</label>
+                        <div class="px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-400 font-mono font-bold" id="sim_pln_result">
+                            ~{{ sample_car_pln }} PLN
+                        </div>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-500">
+                    Otomoto.pl saytında median qiymət müqayisəsi və gəlir fərqi bu məzənnə ilə hesablanır.
+                </p>
+            </div>
+
+            <!-- Simulator 2: Czech CZK -> Euro -->
+            <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
+                <span class="text-xs font-bold text-blue-400 flex items-center gap-2 uppercase tracking-wider">
+                    🇨🇿 Çexiya Elan Qiyməti (Koruna) &rarr; 💶 Avro
+                </span>
+                <div class="flex items-center gap-3">
+                    <div class="flex-1">
+                        <label class="block text-[11px] text-slate-400 mb-1">Çex Korunası (CZK)</label>
+                        <input type="number" id="sim_czk_val" value="350000" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white font-mono font-bold" oninput="runSimCalc()">
+                    </div>
+                    <div class="text-slate-500 pt-5 text-lg">&rarr;</div>
+                    <div class="flex-1">
+                        <label class="block text-[11px] text-slate-400 mb-1">Avro Dəyəri (€)</label>
+                        <div class="px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm text-blue-400 font-mono font-bold" id="sim_eur_result">
+                            ~{{ sample_czk_to_eur }} €
+                        </div>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-500">
+                    Sauto.cz və Bazos.cz saytlarındakı koruna qiymətləri avtomatik bu əmsalla Avroya çevrilir.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scraper Impact Matrix -->
+    <div class="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
+        <div class="border-b border-slate-800 pb-3">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-network-wired text-purple-400"></i>
+                Məzənnələrin Skraperlərə Təsir Xəritəsi
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Hər platformanın hansı valyuta məzənnəsi ilə işlədiyini göstərir.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-800 text-slate-400 uppercase font-bold tracking-wider">
+                        <th class="py-3 px-4">Platforma</th>
+                        <th class="py-3 px-4">Ölkə</th>
+                        <th class="py-3 px-4">Doğma Valyuta</th>
+                        <th class="py-3 px-4">İstifadə Olunan Məzənnə</th>
+                        <th class="py-3 px-4">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-medium">
+                    <tr class="hover:bg-slate-800/20">
+                        <td class="py-3.5 px-4 font-bold text-white">Otomoto.pl</td>
+                        <td class="py-3.5 px-4 text-slate-300">🇵🇱 Polşa</td>
+                        <td class="py-3.5 px-4 font-mono text-emerald-400 font-bold">PLN (Zlotı)</td>
+                        <td class="py-3.5 px-4 text-slate-200 font-mono">1 EUR = <span class="text-emerald-400 font-bold">{{ rates.eur_to_pln }}</span> PLN</td>
+                        <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[10px]">Aktiv Arbitraj</span></td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/20">
+                        <td class="py-3.5 px-4 font-bold text-white">Sauto.cz</td>
+                        <td class="py-3.5 px-4 text-slate-300">🇨🇿 Çexiya</td>
+                        <td class="py-3.5 px-4 font-mono text-blue-400 font-bold">CZK (Koruna)</td>
+                        <td class="py-3.5 px-4 text-slate-200 font-mono">1 CZK = <span class="text-blue-400 font-bold">{{ rates.czk_to_eur }}</span> €</td>
+                        <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-bold text-[10px]">Aktiv Çevrilmə</span></td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/20">
+                        <td class="py-3.5 px-4 font-bold text-white">Bazos.cz</td>
+                        <td class="py-3.5 px-4 text-slate-300">🇨🇿 Çexiya</td>
+                        <td class="py-3.5 px-4 font-mono text-blue-400 font-bold">CZK (Koruna)</td>
+                        <td class="py-3.5 px-4 text-slate-200 font-mono">1 CZK = <span class="text-blue-400 font-bold">{{ rates.czk_to_eur }}</span> €</td>
+                        <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-bold text-[10px]">Aktiv Çevrilmə</span></td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/20">
+                        <td class="py-3.5 px-4 font-bold text-white">Mobile.de & Kleinanzeigen</td>
+                        <td class="py-3.5 px-4 text-slate-300">🇩🇪 Almaniya</td>
+                        <td class="py-3.5 px-4 font-mono text-white font-bold">EUR (€)</td>
+                        <td class="py-3.5 px-4 text-slate-400">Doğrudan EUR (Çevrilmə tələb olunmur)</td>
+                        <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold text-[10px]">Birbaşa EUR</span></td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/20">
+                        <td class="py-3.5 px-4 font-bold text-white">Leboncoin.fr</td>
+                        <td class="py-3.5 px-4 text-slate-300">🇫🇷 Fransa</td>
+                        <td class="py-3.5 px-4 font-mono text-white font-bold">EUR (€)</td>
+                        <td class="py-3.5 px-4 text-slate-400">Doğrudan EUR (Çevrilmə tələb olunmur)</td>
+                        <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold text-[10px]">Birbaşa EUR</span></td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/20">
+                        <td class="py-3.5 px-4 font-bold text-white">SS.com & Autoplius.lt</td>
+                        <td class="py-3.5 px-4 text-slate-300">🇱🇻 Latviya / 🇱🇹 Litva</td>
+                        <td class="py-3.5 px-4 font-mono text-white font-bold">EUR (€)</td>
+                        <td class="py-3.5 px-4 text-slate-400">Doğrudan EUR (Çevrilmə tələb olunmur)</td>
+                        <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold text-[10px]">Birbaşa EUR</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function updateLiveCalculations() {
+        const eurPln = parseFloat(document.getElementById('input_eur_to_pln').value) || 4.30;
+        const czkEur = parseFloat(document.getElementById('input_czk_to_eur').value) || 0.040;
+
+        if (czkEur > 0) {
+            document.getElementById('input_eur_to_czk').value = (1.0 / czkEur).toFixed(2);
+        }
+        runSimCalc();
+    }
+
+    function syncInverseCzk() {
+        const eurCzk = parseFloat(document.getElementById('input_eur_to_czk').value) || 25.0;
+        if (eurCzk > 0) {
+            document.getElementById('input_czk_to_eur').value = (1.0 / eurCzk).toFixed(5);
+        }
+        runSimCalc();
+    }
+
+    function runSimCalc() {
+        const eurPln = parseFloat(document.getElementById('input_eur_to_pln').value) || 4.30;
+        const czkEur = parseFloat(document.getElementById('input_czk_to_eur').value) || 0.040;
+
+        const eurInput = parseFloat(document.getElementById('sim_eur_val').value) || 0;
+        const czkInput = parseFloat(document.getElementById('sim_czk_val').value) || 0;
+
+        const plnResult = (eurInput * eurPln).toLocaleString('en-US', {maximumFractionDigits: 0});
+        const eurResult = (czkInput * czkEur).toLocaleString('en-US', {maximumFractionDigits: 0});
+
+        document.getElementById('sim_pln_result').textContent = `~${plnResult} PLN`;
+        document.getElementById('sim_eur_result').textContent = `~${eurResult} €`;
+    }
+</script>
+{% endblock %}

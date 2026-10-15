@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Monetization & Gateway | DoogagAuto{% endblock %}
+{% block header_title %}Monetization, Affiliate Networks & Sponsor Management{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Configuration Form (7 columns) -->
+    <div class="lg:col-span-7 glass-card p-6 rounded-2xl border border-slate-800">
+        <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
+            <div>
+                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                    <i class="fa-solid fa-coins text-amber-400"></i> Ad & Redirect Gateway
+                </h3>
+                <p class="text-xs text-slate-400">Manage destination links and sponsor blocks across all listing cards</p>
+            </div>
+            <div>
+                {% if ads.is_redirect_enabled %}
+                <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Gateway Active
+                </span>
+                {% else %}
+                <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-rose-400"></span> Gateway Inactive
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <form action="/admin/monetization" method="POST" class="space-y-5">
+            <!-- Redirect Toggle -->
+            <div class="flex items-center justify-between p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div>
+                    <span class="font-bold text-sm text-white block">Click Redirect Gateway</span>
+                    <span class="text-xs text-slate-400">When active, "View Listing" links are tracked through the internal gateway</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="is_redirect_enabled" value="1" class="sr-only peer" {% if ads.is_redirect_enabled %}checked{% endif %} onchange="updatePreview()">
+                    <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+            </div>
+
+            <!-- Redirect Base URL -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Redirect Base URL
+                </label>
+                <input type="text" name="redirect_base_url" id="inp_base_url" value="{{ ads.redirect_base_url or '/r/' }}"
+                       placeholder="/r/ or https://domain.com/r/"
+                       class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs font-mono focus:outline-none focus:border-emerald-500">
+                <span class="text-[11px] text-slate-500 mt-1 block">Default: <code>/r/</code> (internal FastAPI gateway)</span>
+            </div>
+
+            <!-- Custom Affiliate Network Template -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Affiliate Network (Affiliate / CPA Link Template)
+                </label>
+                <input type="text" name="custom_affiliate_url" id="inp_affiliate" value="{{ ads.custom_affiliate_url or '' }}"
+                       placeholder="e.g. https://ad-network.com/click?subid=doogag"
+                       class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs font-mono focus:outline-none focus:border-emerald-500">
+                <span class="text-[11px] text-slate-500 mt-1 block">If specified, users will be redirected via the affiliate partner. If empty, redirects directly to the listing.</span>
+            </div>
+
+            <!-- Sponsor Text -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Sponsor Ad Text (Appears below each listing card)
+                </label>
+                <textarea name="sponsor_text" id="inp_sponsor_text" rows="2"
+                          placeholder="e.g. Get competitive auto insurance in Poland from our trusted partner!"
+                          class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500"
+                          oninput="updatePreview()">{{ ads.sponsor_text or '' }}</textarea>
+            </div>
+
+            <!-- Sponsor Button -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Sponsor Button Label</label>
+                    <input type="text" name="sponsor_button_name" id="inp_btn_name" value="{{ ads.sponsor_button_name or '' }}"
+                           placeholder="e.g. Calculate Insurance 🛡️"
+                           class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:border-emerald-500"
+                           oninput="updatePreview()">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Sponsor Button URL</label>
+                    <input type="url" name="sponsor_button_url" id="inp_btn_url" value="{{ ads.sponsor_button_url or '' }}"
+                           placeholder="https://sponsor-site.com/offer"
+                           class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                           oninput="updatePreview()">
+                </div>
+            </div>
+
+            <div class="pt-4 flex justify-end">
+                <button type="submit" class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 transition">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i> Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Live Telegram Mockup Card Preview (5 columns) -->
+    <div class="lg:col-span-5 glass-card p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+                <span class="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                    <i class="fa-brands fa-telegram text-blue-400 text-sm"></i> Telegram Live Preview
+                </span>
+                <span class="text-[11px] text-slate-500">Real-Time Mockup</span>
+            </div>
+
+            <!-- Telegram Message Card Simulation -->
+            <div class="p-4 rounded-xl bg-[#17212b] border border-[#2b394a] text-slate-200 text-xs shadow-xl space-y-3 font-sans">
+                <!-- Card Header -->
+                <div class="text-amber-400 font-bold flex items-center gap-1.5">
+                    <span>🔥 HOT DEAL | HIGH ARBITRAGE</span>
+                </div>
+                <div class="text-slate-400 text-[11px]">
+                    <b>Source:</b> 🇩🇪 Germany (MOBILE_DE)
+                </div>
+                <div class="h-px bg-slate-700/60 my-1"></div>
+
+                <!-- Car Title & Specs -->
+                <div class="font-bold text-white text-sm">
+                    🚗 BMW X5 xDrive30d M Sport
+                </div>
+                <div class="text-[11px] text-slate-300">
+                    📅 2018 | 🛣️ 142 000 km | ⛽ Diesel | 📍 Munich
+                </div>
+
+                <!-- Financials -->
+                <div class="space-y-1 pt-1 text-[11px]">
+                    <div>💶 <b>Purchase Price:</b> <span class="font-bold text-white">24 500 €</span> (~105 350 PLN)</div>
+                    <div>🇵🇱 <b>Poland Market Price:</b> ~155 000 PLN (~36 046 €)</div>
+                    <div>🏷️ <b>Total Landed Cost:</b> ~132 800 PLN (~30 883 €)</div>
+                    <div class="text-emerald-400 font-bold pt-1">🟢 Estimated Net Arbitrage: +22 200 PLN (+5 163 €)</div>
+                </div>
+
+                <!-- Dynamic Sponsor Text Block in Card -->
+                <div id="previewSponsorBlock" class="pt-2 border-t border-slate-700/60 text-amber-300 text-[11px] {% if not ads.sponsor_text %}hidden{% endif %}">
+                    💡 <span id="previewSponsorText">{{ ads.sponsor_text or '' }}</span>
+                </div>
+
+                <!-- Simulated Action Buttons -->
+                <div class="pt-2 space-y-1.5">
+                    <div class="w-full py-2 px-3 rounded-lg bg-[#2b5278] hover:bg-[#346595] text-white text-center font-semibold text-xs flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> View Listing ↗️
+                    </div>
+                    <div class="w-full py-2 px-3 rounded-lg bg-[#243343] text-slate-300 text-center font-semibold text-xs">
+                        🇵🇱 Compare on Otomoto
+                    </div>
+                    <!-- Dynamic Sponsor Button -->
+                    <div id="previewSponsorBtn" class="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-amber-600/40 to-yellow-600/40 border border-amber-500/40 text-amber-200 text-center font-bold text-xs flex items-center justify-center gap-2 {% if not ads.sponsor_button_name %}hidden{% endif %}">
+                        <i class="fa-solid fa-star text-[10px]"></i> <span id="previewBtnName">{{ ads.sponsor_button_name or '' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400">
+            <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>
+            When parameters change, this mockup updates immediately and applies live to the Telegram bot.
+        </div>
+    </div>
+</div>
+
+<script>
+    function updatePreview() {
+        const textVal = document.getElementById('inp_sponsor_text').value.trim();
+        const btnVal = document.getElementById('inp_btn_name').value.trim();
+
+        const sponsorBlock = document.getElementById('previewSponsorBlock');
+        const sponsorText = document.getElementById('previewSponsorText');
+        if (textVal) {
+            sponsorText.innerText = textVal;
+            sponsorBlock.classList.remove('hidden');
+        } else {
+            sponsorBlock.classList.add('hidden');
+        }
+
+        const sponsorBtn = document.getElementById('previewSponsorBtn');
+        const btnName = document.getElementById('previewBtnName');
+        if (btnVal) {
+            btnName.innerText = btnVal;
+            sponsorBtn.classList.remove('hidden');
+        } else {
+            sponsorBtn.classList.add('hidden');
+        }
+    }
+</script>
+{% endblock %}
