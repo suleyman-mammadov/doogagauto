@@ -59,7 +59,7 @@ $$\text{Net Profit} = \text{Poland Median Selling Price (EUR)} - (\text{Purchase
 
 > 🔥 **Hot Deals:** If $\text{Net Profit} \ge 1,500\text{ EUR}$ or price is $\ge 15\%$ below market value, the listing is automatically forwarded to the **`#HotDeals`** topic!
 
----
+----
 
 ## 🏛️ 4. Telegram Forum & Dynamic Topic Architecture
 
