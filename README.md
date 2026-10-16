@@ -10,7 +10,7 @@ The system compares regional prices against Polish market benchmark values (**Ot
 
 Platforms are categorized into two primary tiers:
 * **Classifieds / Peer-to-Peer (P2P):** Direct from owners, zero dealer markup, where the cheapest emergency and fast-sale listings appear.
-* **Professional Auto Portals (B2C / Aggregators):** Clean structured filtering with higher anti-bot security.
+* **Professional Auto Portals (B2C / Aggregators):** Clean structured filtering with higher anti-bot security..
 
 | Region | Country | Platforms | Security / Tier |
 | :--- | :--- | :--- | :--- |
