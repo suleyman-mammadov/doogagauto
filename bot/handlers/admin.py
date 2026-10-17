@@ -111,10 +111,42 @@ async def build_monetization_text_and_keyboard() -> tuple[str, InlineKeyboardMar
 # ==============================================================================
 
 @router.message(Command("admin"))
-async def cmd_admin(message: Message):
+async def cmd_admin(message: Message, lang: str = "en"):
     """Entry point for /admin dashboard."""
     if not message.from_user or not is_admin(message.from_user.id):
-        await message.answer("⛔ This command is only for authorized administrators.")
+        if not settings.ADMIN_USER_IDS and message.from_user:
+            hints = {
+                "en": (
+                    f"⛔ <b>Admin Access Not Configured!</b>\n\n"
+                    f"Your Telegram User ID: <code>{message.from_user.id}</code>\n\n"
+                    f"To activate admin access, add your ID to the <code>.env</code> file:\n"
+                    f"<code>ADMIN_USER_IDS={message.from_user.id}</code>\n"
+                    f"and restart the bot."
+                ),
+                "pl": (
+                    f"⛔ <b>Dostęp administratora nie jest skonfigurowany!</b>\n\n"
+                    f"Twoje ID użytkownika Telegram: <code>{message.from_user.id}</code>\n\n"
+                    f"Aby aktywować dostęp administratora, dodaj swoje ID do pliku <code>.env</code>:\n"
+                    f"<code>ADMIN_USER_IDS={message.from_user.id}</code>\n"
+                    f"i zrestartuj bota."
+                ),
+                "ru": (
+                    f"⛔ <b>Доступ администратора не настроен!</b>\n\n"
+                    f"Ваш Telegram User ID: <code>{message.from_user.id}</code>\n\n"
+                    f"Чтобы активировать доступ администратора, добавьте свой ID в файл <code>.env</code>:\n"
+                    f"<code>ADMIN_USER_IDS={message.from_user.id}</code>\n"
+                    f"и перезапустите бота."
+                )
+            }
+            await message.answer(hints.get(lang, hints["en"]), parse_mode="HTML")
+            return
+
+        denied_msgs = {
+            "en": "⛔ This command is only for authorized administrators.",
+            "pl": "⛔ To polecenie jest przeznaczone wyłącznie dla uprawnionych administratorów.",
+            "ru": "⛔ Эта команда доступна только авторизованным администраторам."
+        }
+        await message.answer(denied_msgs.get(lang, denied_msgs["en"]))
         return
 
     text = (
@@ -126,10 +158,15 @@ async def cmd_admin(message: Message):
 
 
 @router.callback_query(F.data == "admin_main_menu")
-async def callback_admin_main(callback: CallbackQuery):
+async def callback_admin_main(callback: CallbackQuery, lang: str = "en"):
     """Return to admin root menu."""
     if not callback.from_user or not is_admin(callback.from_user.id):
-        await callback.answer("Access denied", show_alert=True)
+        denied_alert = {
+            "en": "Access denied",
+            "pl": "Brak dostępu",
+            "ru": "Доступ запрещен"
+        }
+        await callback.answer(denied_alert.get(lang, "Access denied"), show_alert=True)
         return
 
     text = (
@@ -429,11 +466,16 @@ async def process_broadcast_launch(callback: CallbackQuery, state: FSMContext, b
             [InlineKeyboardButton(text=btn_name, url=btn_url)]
         ])
 
-    status_msg = None
+    status_chat_id = callback.from_user.id
+    status_message_id = 0
     if isinstance(callback.message, Message):
         status_msg = await callback.message.edit_text("📡 <b>Starting broadcast... Please wait.</b>", parse_mode="HTML")
+        status_chat_id = callback.message.chat.id
+        status_message_id = status_msg.message_id if isinstance(status_msg, Message) else callback.message.message_id
     else:
         status_msg = await bot.send_message(chat_id=callback.from_user.id, text="📡 <b>Starting broadcast...</b>", parse_mode="HTML")
+        status_chat_id = status_msg.chat.id
+        status_message_id = status_msg.message_id
 
     await state.clear()
     await callback.answer()
@@ -443,8 +485,8 @@ async def process_broadcast_launch(callback: CallbackQuery, state: FSMContext, b
         await broadcast_engine.start_broadcast(
             bot=bot,
             admin_id=callback.from_user.id,
-            admin_chat_id=status_msg.chat.id,
-            status_message_id=status_msg.message_id,
+            admin_chat_id=status_chat_id,
+            status_message_id=status_message_id,
             target_type=target_type,
             message_text=text,
             photo_file_id=photo_id,
@@ -452,7 +494,7 @@ async def process_broadcast_launch(callback: CallbackQuery, state: FSMContext, b
         )
     except Exception as e:
         logger.error(f"Failed to start broadcast: {e}")
-        await bot.send_message(chat_id=status_msg.chat.id, text=f"❌ Error: {e}")
+        await bot.send_message(chat_id=status_chat_id, text=f"❌ Error: {e}")
 
 
 @router.message(Command("cancel_broadcast"))

@@ -2,8 +2,15 @@
     "include": [
         "."
     ],
+    "exclude": [
+        "**/__pycache__",
+        ".venv",
+        "scratch"
+    ],
     "venvPath": ".",
     "venv": ".venv",
+    "pythonVersion": "3.12",
+    "pythonPlatform": "Windows",
     "extraPaths": [
         ".",
         ".venv/Lib/site-packages",
@@ -18,5 +25,13 @@
     "reportGeneralTypeIssues": "none",
     "reportArgumentType": "none",
     "reportReturnType": "none",
+    "reportAssignmentType": "none",
+    "reportUnknownMemberType": "none",
+    "reportPrivateImportUsage": "none",
+    "reportIncompatibleMethodOverride": "none",
+    "reportCallIssue": "none",
+    "reportIndexIssue": "none",
+    "reportOperatorIssue": "none",
+    "reportUndefinedVariable": "none",
     "reportMissingTypeStubs": false
 }

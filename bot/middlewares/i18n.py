@@ -13,7 +13,10 @@ _USER_LANG_CACHE: Dict[int, str] = {}
 
 def set_cached_user_language(user_id: int, lang: str):
     """Update user language in memory cache."""
-    _USER_LANG_CACHE[user_id] = (lang or "en").lower()
+    clean_lang = (lang or "en").lower()
+    if clean_lang not in ("en", "pl", "ru"):
+        clean_lang = "en"
+    _USER_LANG_CACHE[user_id] = clean_lang
 
 
 def get_cached_user_language(user_id: int) -> Optional[str]:
@@ -36,16 +39,16 @@ class I18nMiddleware(BaseMiddleware):
         if user:
             user_id = user.id
             cached_lang = _USER_LANG_CACHE.get(user_id)
-            if cached_lang:
+            if cached_lang and cached_lang in ("en", "pl", "ru"):
                 lang = cached_lang
             else:
                 try:
                     db_lang = await get_user_language(user_id)
-                    if db_lang:
-                        lang = db_lang
-                        _USER_LANG_CACHE[user_id] = lang
+                    if db_lang and db_lang.lower() in ("en", "pl", "ru"):
+                        lang = db_lang.lower()
                     else:
                         lang = "en"
+                    _USER_LANG_CACHE[user_id] = lang
                 except Exception as e:
                     logger.debug(f"Failed to fetch user language from DB: {e}")
                     lang = "en"

@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 import logging
 import re
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 
 # Ensure project root is in sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -542,9 +542,11 @@ async def handle_make_picked(callback: CallbackQuery, state: FSMContext, lang: s
 
     if isinstance(callback.message, Message):
         dashboard_msg = await callback.message.edit_text(dashboard_text, reply_markup=keyboard, parse_mode="HTML")
+        msg_id = dashboard_msg.message_id if isinstance(dashboard_msg, Message) else callback.message.message_id
+        chat_id = dashboard_msg.chat.id if isinstance(dashboard_msg, Message) else callback.message.chat.id
         await state.update_data(
-            dashboard_msg_id=dashboard_msg.message_id,
-            dashboard_chat_id=dashboard_msg.chat.id
+            dashboard_msg_id=msg_id,
+            dashboard_chat_id=chat_id
         )
     await callback.answer()
 
@@ -644,6 +646,8 @@ async def handle_open_option_submenu(callback: CallbackQuery, state: FSMContext,
             await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
         except Exception as edit_err:
             logger.debug(f"Submenu edit error: {edit_err}")
+
+
 async def handle_open_model_menu(callback: CallbackQuery, state: FSMContext, lang: str = "en"):
     """Open dedicated Model selection submenu for current Make."""
     data = await state.get_data()
@@ -1193,7 +1197,7 @@ async def submit_and_create_topic(callback: CallbackQuery, state: FSMContext, bo
     topic_id = 0
     pinned_message_id = None
     created_in_group = False
-    group_title = notify_settings.get("connected_group_title") or "Şəxsi Qrup"
+    group_title = notify_settings.get("connected_group_title") or t("group_default_title", lang)
 
     year_str = f"{year_min} - {year_max}" if (year_min and year_max) else (str(year_min) if year_min else (str(year_max) if year_max else "-"))
     mileage_str = f"Max {mileage_max:,} km".replace(",", " ") if mileage_max else "-"
@@ -1271,60 +1275,60 @@ async def submit_and_create_topic(callback: CallbackQuery, state: FSMContext, bo
     if created_in_group and topic_id > 0:
         topic_url = get_topic_link(target_chat_id, topic_id)
         buttons.append([
-            InlineKeyboardButton(text="🔗 Mövzuya Keç (Qrup)", url=topic_url)
+            InlineKeyboardButton(text=t("btn_go_to_group_topic", lang), url=topic_url)
         ])
+        group_notice = t("group_topic_notice", lang, topic_name=topic_name, group_title=group_title)
         success_msg = (
-            f"✅ <b>Axtarışınız uğurla aktivləşdirildi!</b>\n"
+            f"{t('search_activated_success', lang)}\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
             f"🚙 <b>{make} {model or ''}</b>\n"
-            f"📅 <b>İl:</b> {year_str}\n"
-            f"🧭 <b>Yürüş:</b> {mileage_str}\n"
-            f"💰 <b>Büdcə:</b> {price_str}\n"
-            f"⛽ <b>Yanacaq:</b> {fuel_lbl}\n"
-            f"⚙️ <b>Sürətlər Qutusu:</b> {trans_lbl}\n"
-            f"🛠 <b>Vəziyyət:</b> {cond_lbl}\n"
-            f"🌍 <b>Bazar:</b> {country_lbl}\n"
+            f"📅 <b>{t('filter_year_label', lang)}:</b> {year_str}\n"
+            f"🧭 <b>{t('filter_mileage_label', lang)}:</b> {mileage_str}\n"
+            f"💰 <b>{t('filter_price_label', lang)}:</b> {price_str}\n"
+            f"⛽ <b>{t('filter_fuel_label', lang)}:</b> {fuel_lbl}\n"
+            f"⚙️ <b>{t('filter_gearbox_label', lang)}:</b> {trans_lbl}\n"
+            f"🛠 <b>{t('btn_condition', lang)}:</b> {cond_lbl}\n"
+            f"🌍 <b>{t('filter_market_label', lang)}:</b> {country_lbl}\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👥 <b>Şəxsi Qrupunuzda Mövzu Açıldı:</b> Bu filtrə uyğun bütün elanlar <b>{group_title}</b> qrupunda xüsusi <b>{topic_name}</b> mövzusuna göndəriləcək.\n\n"
-            f"<i>Nə etmək istəyirsiniz?</i>"
+            f"{group_notice}\n\n"
+            f"{t('what_next_hint', lang)}"
         )
     else:
+        dm_notice = t("dm_protection_notice", lang)
         success_msg = (
-            f"✅ <b>Axtarışınız uğurla aktivləşdirildi!</b>\n"
+            f"{t('search_activated_success', lang)}\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
             f"🚙 <b>{make} {model or ''}</b>\n"
-            f"📅 <b>İl:</b> {year_str}\n"
-            f"🧭 <b>Yürüş:</b> {mileage_str}\n"
-            f"💰 <b>Büdcə:</b> {price_str}\n"
-            f"⛽ <b>Yanacaq:</b> {fuel_lbl}\n"
-            f"⚙️ <b>Sürətlər Qutusu:</b> {trans_lbl}\n"
-            f"🛠 <b>Vəziyyət:</b> {cond_lbl}\n"
-            f"🌍 <b>Bazar:</b> {country_lbl}\n"
+            f"📅 <b>{t('filter_year_label', lang)}:</b> {year_str}\n"
+            f"🧭 <b>{t('filter_mileage_label', lang)}:</b> {mileage_str}\n"
+            f"💰 <b>{t('filter_price_label', lang)}:</b> {price_str}\n"
+            f"⛽ <b>{t('filter_fuel_label', lang)}:</b> {fuel_lbl}\n"
+            f"⚙️ <b>{t('filter_gearbox_label', lang)}:</b> {trans_lbl}\n"
+            f"🛠 <b>{t('btn_condition', lang)}:</b> {cond_lbl}\n"
+            f"🌍 <b>{t('filter_market_label', lang)}:</b> {country_lbl}\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🔒 <b>100% Şəxsi Çat Qorunması:</b> Bu filtrə uyğun tapılan bütün yeni elanlar tam məxfi olaraq yalnız və yalnız sizin bu şəxsi çatınıza göndəriləcəkdir."
+            f"{dm_notice}"
         )
 
         # Progressive disclosure tip if user has 2 or more filters and is in DM mode
         if len(existing_filters) >= 1 and notify_settings.get("notification_target") == "dm":
-            success_msg += (
-                f"\n\n💡 <b>İpucu:</b> Birdən çox avtomobil axtarırsınızsa, elanların qarışmaması üçün öz şəxsi qrupunuzu qoşub hər maşını ayrı Mövzuda (Topic-də) izləyə bilərsiniz."
-            )
+            success_msg += f"\n\n{t('dm_multi_filter_tip', lang)}"
             buttons.append([
-                InlineKeyboardButton(text="👥 Şəxsi Qrupu Qoş (Topics Pro)", callback_data="btn_connect_group_info")
+                InlineKeyboardButton(text=t("btn_connect_group_pro", lang), callback_data="btn_connect_group_info")
             ])
 
-        success_msg += "\n\n<i>Nə etmək istəyirsiniz?</i>"
+        success_msg += f"\n\n{t('what_next_hint', lang)}"
 
     buttons.append([
-        InlineKeyboardButton(text="📥 Mövcud Elanları İndi Gətir", callback_data=f"filter_fetch_now_{filter_id}")
+        InlineKeyboardButton(text=t("btn_fetch_now", lang), callback_data=f"filter_fetch_now_{filter_id}")
     ])
     buttons.append([
-        InlineKeyboardButton(text="⚙️ Filtr Tənzimləmələri & Limit", callback_data=f"filter_details_{filter_id}"),
-        InlineKeyboardButton(text="📋 Bütün Filtrlərim", callback_data="btn_my_topics")
+        InlineKeyboardButton(text=t("btn_filter_settings", lang), callback_data=f"filter_details_{filter_id}"),
+        InlineKeyboardButton(text=t("btn_my_topics", lang), callback_data="btn_my_topics")
     ])
     buttons.append([
-        InlineKeyboardButton(text="➕ Yeni Axtarış Əlavə Et", callback_data="btn_new_search"),
-        InlineKeyboardButton(text="🏠 Əsas Menyu", callback_data="btn_main_menu")
+        InlineKeyboardButton(text=t("btn_new_search", lang), callback_data="btn_new_search"),
+        InlineKeyboardButton(text=t("btn_main_menu", lang), callback_data="btn_main_menu")
     ])
 
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)

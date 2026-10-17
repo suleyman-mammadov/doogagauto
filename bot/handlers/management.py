@@ -34,7 +34,7 @@ from database.queries import (
     link_user_group,
     unlink_user_group
 )
-from bot.locales.texts import t, LANGUAGES
+from bot.locales.texts import t, LANGUAGES, get_option_label
 from bot.middlewares.i18n import set_cached_user_language
 
 logger = logging.getLogger(__name__)
@@ -49,44 +49,55 @@ class FilterEditState(StatesGroup):
     waiting_for_mileage = State()
 
 
-DEAL_TYPE_LABELS = {
-    "all": "💎 Bütün Fürsətlər",
-    "top_profit": "🚀 Ən Yüksək Marja (>25%)",
-    "new_cars": "⚡ Təzə Modellər (2018+)",
-    "low_mileage": "🛣️ Az Probeg (<100k km)",
-    "low_mileage_cheap": "🌟 Az Probeg + Çox Ucuz"
+DEAL_TYPE_LABELS: Dict[str, str] = {
+    "all": "💎 All Deals",
+    "top_profit": "🚀 Top Margin (>25%)",
+    "new_cars": "⚡ New Models (2018+)",
+    "low_mileage": "🛣️ Low Mileage (≤100k km)",
+    "low_mileage_cheap": "🌟 Low Mileage + Cheap"
 }
 
 
-def format_limit_label(limit: int) -> str:
+def get_deal_type_label(deal_type: str, lang: str = "en") -> str:
+    labels = {
+        "all": {"en": "💎 All Deals", "pl": "💎 Wszystkie Okazje", "ru": "💎 Все Сделки"},
+        "top_profit": {"en": "🚀 Top Margin (>25%)", "pl": "🚀 Najwyższa Marża (>25%)", "ru": "🚀 Макс. Маржа (>25%)"},
+        "new_cars": {"en": "⚡ New Models (2018+)", "pl": "⚡ Nowsze Modele (2018+)", "ru": "⚡ Новые Модели (2018+)"},
+        "low_mileage": {"en": "🛣️ Low Mileage (≤100k km)", "pl": "🛣️ Niski Przebieg (≤100k km)", "ru": "🛣️ Низкий Пробег (≤100k км)"},
+        "low_mileage_cheap": {"en": "🌟 Low Mileage + Cheap", "pl": "🌟 Niski Przebieg + Tani", "ru": "🌟 Низкий Пробег + Недорогой"}
+    }
+    sub = labels.get(deal_type, {})
+    return sub.get(lang) or sub.get("en") or deal_type
+
+
+def format_limit_label(limit: int, lang: str = "en") -> str:
     if not limit or limit <= 0:
-        return "♾️ Limitsiz"
-    return f"{limit} elan / gün"
+        return t("limit_unlimited", lang)
+    return t("limit_per_day", lang, limit=limit)
 
 
-def format_age_label(age_hours: int) -> str:
+def format_age_label(age_hours: int, lang: str = "en") -> str:
     if not age_hours or age_hours <= 0:
-        return "⚡ Real-Time (Canlı)"
+        return t("age_realtime", lang)
     elif age_hours == 1:
-        return "⏱️ Son 1 Saat"
+        return t("age_1h", lang)
     elif age_hours == 24:
-        return "📅 Son 24 Saat (1 gün)"
+        return t("age_24h", lang)
     elif age_hours == 168:
-        return "🗓️ Son 7 Gün (1 həftə)"
+        return t("age_7d", lang)
     elif age_hours == 720:
-        return "🗓️ Son 30 Gün (1 ay)"
-    return f"🌐 {age_hours}h / Bütün"
+        return t("age_30d", lang)
+    return f"🌐 {age_hours}h"
 
 
 def get_language_keyboard() -> InlineKeyboardMarkup:
-    """Build language selection inline buttons with Azerbaijani, English, Polish, Russian."""
+    """Build language selection inline buttons with English, Polish, Russian."""
     buttons = [
         [
-            InlineKeyboardButton(text="🇦🇿 Azərbaycan", callback_data="set_lang_az"),
-            InlineKeyboardButton(text="🇬🇧 English", callback_data="set_lang_en")
+            InlineKeyboardButton(text="🇬🇧 English", callback_data="set_lang_en"),
+            InlineKeyboardButton(text="🇵🇱 Polski", callback_data="set_lang_pl")
         ],
         [
-            InlineKeyboardButton(text="🇵🇱 Polski", callback_data="set_lang_pl"),
             InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang_ru")
         ]
     ]
@@ -98,10 +109,7 @@ def get_settings_keyboard(lang: str, hot_deals_enabled: bool = True, notify_sett
     hd_btn_text = t("btn_hot_deals_on", lang) if hot_deals_enabled else t("btn_hot_deals_off", lang)
     buttons = [
         [
-            InlineKeyboardButton(text="🇦🇿 Azərbaycan", callback_data="set_lang_az"),
-            InlineKeyboardButton(text="🇬🇧 English", callback_data="set_lang_en")
-        ],
-        [
+            InlineKeyboardButton(text="🇬🇧 English", callback_data="set_lang_en"),
             InlineKeyboardButton(text="🇵🇱 Polski", callback_data="set_lang_pl"),
             InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang_ru")
         ]
@@ -114,21 +122,21 @@ def get_settings_keyboard(lang: str, hot_deals_enabled: bool = True, notify_sett
     if target == "dm":
         if group_id:
             buttons.append([
-                InlineKeyboardButton(text=f"👥 Qrupa Keçir ({group_title or 'Topics'})", callback_data="btn_switch_to_group")
+                InlineKeyboardButton(text=f"{t('btn_switch_to_group', lang)} ({group_title or 'Topics'})", callback_data="btn_switch_to_group")
             ])
             buttons.append([
-                InlineKeyboardButton(text="🔄 Qrupu Dəyiş / Yenisini Qoş", callback_data="btn_connect_group_info")
+                InlineKeyboardButton(text=t("btn_disconnect_group", lang), callback_data="btn_connect_group_info")
             ])
         else:
             buttons.append([
-                InlineKeyboardButton(text="👥 Şəxsi Qrupu Qoş (Topics Pro)", callback_data="btn_connect_group_info")
+                InlineKeyboardButton(text=t("btn_connect_group_pro", lang), callback_data="btn_connect_group_info")
             ])
     else:
         buttons.append([
-            InlineKeyboardButton(text="🟢 Şəxsi Çata (DM) Keçir", callback_data="btn_switch_to_dm")
+            InlineKeyboardButton(text=t("btn_switch_to_dm", lang), callback_data="btn_switch_to_dm")
         ])
         buttons.append([
-            InlineKeyboardButton(text="🔄 Qrupu Dəyiş / Ayır", callback_data="btn_connect_group_info")
+            InlineKeyboardButton(text=t("btn_disconnect_group", lang), callback_data="btn_connect_group_info")
         ])
 
     buttons.append([
@@ -163,25 +171,23 @@ def build_hot_deals_dashboard_text(hd: Dict[str, Any], lang: str) -> str:
     status_label = t("status_active", lang) if hd.get("enabled", True) else t("status_disabled", lang)
     min_profit_str = f"{int(hd.get('min_profit_eur', 1500)):,}".replace(",", " ")
     min_profit_pct = f"{int(hd.get('min_profit_percent', 15))}%"
-    deal_type_str = DEAL_TYPE_LABELS.get(hd.get("deal_type", "all"), "💎 Bütün")
+    deal_type_str = get_deal_type_label(hd.get("deal_type", "all"), lang)
     min_year_str = f"{hd.get('min_year', 2012)}+" if hd.get("min_year", 0) > 0 else t("any_year", lang)
     max_price_str = f"≤ {int(hd.get('max_price_eur', 0)):,} €".replace(",", " ") if hd.get("max_price_eur", 0) > 0 else t("unlimited_price", lang)
-    max_mileage_str = f"≤ {int(hd.get('max_mileage', 0)):,} km".replace(",", " ") if hd.get("max_mileage", 0) > 0 else "♾️ Limitsiz"
+    max_mileage_str = f"≤ {int(hd.get('max_mileage', 0)):,} km".replace(",", " ") if hd.get("max_mileage", 0) > 0 else t("unlimited_price", lang)
     interval_str = format_interval_label(hd.get("interval_hours", 0), lang)
 
-    return (
-        f"🔥 <b>FƏRDİ HOT DEALS PARAMETRLƏRİ</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"• <b>Status:</b> {status_label}\n"
-        f"• <b>Min. Xalis Qazanc:</b> ≥ {min_profit_str} €\n"
-        f"• <b>Min. Xeyir Faizi:</b> ≥ {min_profit_pct}\n"
-        f"• <b>Fokus Kateqoriyası:</b> {deal_type_str}\n"
-        f"• <b>Min. İl:</b> {min_year_str}\n"
-        f"• <b>Maks. Qiymət:</b> {max_price_str}\n"
-        f"• <b>Maks. Yürüş:</b> {max_mileage_str}\n"
-        f"• <b>Bildiriş Tezliyi:</b> {interval_str}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"Dəyişmək istədiyiniz parametri seçin:"
+    return t(
+        "hot_deals_dashboard_title",
+        lang,
+        status=status_label,
+        min_profit=min_profit_str,
+        min_pct=min_profit_pct,
+        deal_type=deal_type_str,
+        min_year=min_year_str,
+        max_price=max_price_str,
+        max_mileage=max_mileage_str,
+        interval=interval_str
     )
 
 
@@ -192,30 +198,31 @@ def build_hot_deals_dashboard_keyboard(hd: Dict[str, Any], lang: str) -> InlineK
     min_pct_str = f"≥ {int(hd.get('min_profit_percent', 15))}%"
     min_year_str = f"{hd.get('min_year', 2012)}+" if hd.get("min_year", 0) > 0 else t("any_year", lang)
     max_price_str = f"≤ {int(hd.get('max_price_eur', 0))} €" if hd.get("max_price_eur", 0) > 0 else t("unlimited_price", lang)
-    deal_type_label = DEAL_TYPE_LABELS.get(hd.get("deal_type", "all"), "💎 Bütün")
+    deal_type_label = get_deal_type_label(hd.get("deal_type", "all"), lang)
     interval_str = format_interval_label(hd.get("interval_hours", 0), lang)
+    mileage_str = f"≤ {int(hd.get('max_mileage', 0)):,} km".replace(",", " ") if hd.get("max_mileage", 0) > 0 else t("unlimited_price", lang)
 
     buttons = [
         [
             InlineKeyboardButton(text=status_text, callback_data="hd_toggle_status")
         ],
         [
-            InlineKeyboardButton(text=f"💰 Min Qazanc: {min_profit_str}", callback_data="hd_param_profit"),
-            InlineKeyboardButton(text=f"📈 Qazanc Faizi: {min_pct_str}", callback_data="hd_param_pct")
+            InlineKeyboardButton(text=t("btn_hd_profit", lang, v=min_profit_str), callback_data="hd_param_profit"),
+            InlineKeyboardButton(text=t("btn_hd_pct", lang, v=min_pct_str), callback_data="hd_param_pct")
         ],
         [
-            InlineKeyboardButton(text=f"🎯 Fokus: {deal_type_label}", callback_data="hd_param_type")
+            InlineKeyboardButton(text=t("btn_hd_focus", lang, v=deal_type_label), callback_data="hd_param_type")
         ],
         [
-            InlineKeyboardButton(text=f"📅 İl: {min_year_str}", callback_data="hd_param_year"),
-            InlineKeyboardButton(text=f"🏷️ Qiymət: {max_price_str}", callback_data="hd_param_price")
+            InlineKeyboardButton(text=t("btn_hd_year", lang, v=min_year_str), callback_data="hd_param_year"),
+            InlineKeyboardButton(text=t("btn_hd_price", lang, v=max_price_str), callback_data="hd_param_price")
         ],
         [
-            InlineKeyboardButton(text=f"🧭 Yürüş Limiti", callback_data="hd_param_mileage"),
-            InlineKeyboardButton(text=f"⏱️ Tezlik: {interval_str}", callback_data="hd_param_interval")
+            InlineKeyboardButton(text=t("btn_hd_mileage", lang, v=mileage_str), callback_data="hd_param_mileage"),
+            InlineKeyboardButton(text=t("btn_hd_interval", lang, v=interval_str), callback_data="hd_param_interval")
         ],
         [
-            InlineKeyboardButton(text="🔥 Hot Deals Hub", callback_data="btn_hot_deals_hub"),
+            InlineKeyboardButton(text=t("btn_hot_deals_hub", lang), callback_data="btn_hot_deals_hub"),
             InlineKeyboardButton(text=t("btn_back_to_settings", lang), callback_data="btn_settings")
         ]
     ]
@@ -227,10 +234,10 @@ def get_main_menu_keyboard(lang: str) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(text=t("btn_new_search", lang), callback_data="btn_new_search"),
-            InlineKeyboardButton(text="📋 Filtrlərim", callback_data="btn_my_topics")
+            InlineKeyboardButton(text=t("btn_my_topics", lang), callback_data="btn_my_topics")
         ],
         [
-            InlineKeyboardButton(text="🔥 Hot Deals Skaneri", callback_data="btn_hot_deals_hub"),
+            InlineKeyboardButton(text=t("btn_hot_deals_hub", lang), callback_data="btn_hot_deals_hub"),
             InlineKeyboardButton(text=t("btn_stats", lang), callback_data="btn_stats")
         ],
         [
@@ -259,68 +266,50 @@ def format_topic_link(group_chat_id: Any, topic_id: int) -> str:
 # /START & LANGUAGE SELECTION
 # ==============================================================================
 
-async def validate_group_for_bot(bot: Bot, chat_id: int) -> Tuple[bool, Optional[str]]:
+async def validate_group_for_bot(bot: Bot, chat_id: int, lang: Optional[str] = "en") -> Tuple[bool, str]:
     """Verify that group is a forum, bot is administrator, and has manage_topics & pin permissions."""
     try:
         chat = await bot.get_chat(chat_id)
         if not getattr(chat, "is_forum", False):
-            return False, (
-                "⚠️ <b>Bu qrupda 'Mövzular (Topics)' funksiyası bağlıdır.</b>\n\n"
-                "Qrup tənzimləmələrinə girib 'Topics' (Mövzular) seçimini aktiv edin və yenidən <code>/connect</code> yazın."
-            )
+            return False, t("validate_not_forum", lang)
 
         bot_info = await bot.get_me()
         member = await bot.get_chat_member(chat_id, bot_info.id)
         if member.status != "administrator":
-            return False, (
-                "⚠️ <b>Mənə qrupda Administrator hüququ verilməyib.</b>\n\n"
-                "Zəhmət olmasa məni qrupda admin edin və yenidən <code>/connect</code> yazın."
-            )
+            return False, t("validate_not_admin", lang)
 
         if not getattr(member, "can_manage_topics", False):
-            return False, (
-                "⚠️ <b>Mənim yeni Topic açmaq icazəm yoxdur.</b>\n\n"
-                "Admin parametrlərində 'Manage Topics' (Mövzuları İdarə Etmək) icazəsini açın və yenidən <code>/connect</code> yazın."
-            )
+            return False, t("validate_no_manage_topics", lang)
 
         if not getattr(member, "can_pin_messages", False):
-            return False, (
-                "⚠️ <b>Filtr məlumatını yuxarı bərkitmək üçün 'Pin Messages' icazəsini aktiv edin.</b>"
-            )
+            return False, t("validate_no_pin", lang)
 
-        return True, None
+        return True, ""
     except Exception as e:
-        return False, f"⚠️ Qrup yoxlanılarkən xəta baş verdi: {e}"
+        return False, t("validate_error", lang, e=str(e))
 
 
 async def process_group_connection(message: Message, bot: Bot, user_id: int):
     """Link a validated group to user settings and notify user."""
-    is_valid, error_msg = await validate_group_for_bot(bot, message.chat.id)
+    u_lang = (await get_user_language(user_id)) or "en" if user_id else "en"
+    is_valid, error_msg = await validate_group_for_bot(bot, message.chat.id, lang=u_lang)
     if not is_valid:
-        await message.answer(error_msg, parse_mode="HTML")
+        if error_msg:
+            await message.answer(error_msg, parse_mode="HTML")
         return
 
-    group_title = message.chat.title or "Şəxsi Qrup"
+    group_title = message.chat.title or t("group_default_title", u_lang)
     await link_user_group(user_id, message.chat.id, group_title)
 
     await message.answer(
-        f"✅ <b>Qrupunuz uğurla qoşuldu!</b>\n━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👥 <b>Qrup:</b> {group_title}\n"
-        f"👤 <b>Sahib ID:</b> <code>{user_id}</code>\n\n"
-        f"İndi yaratdığınız yeni axtarışlar üçün bu qrupda avtomatik xüsusi Topic-lər (Mövzular) açılacaq və elanlar birbaşa bura göndəriləcək.",
+        t("group_connected_chat", u_lang, title=group_title, user_id=user_id),
         parse_mode="HTML"
     )
 
     try:
         await bot.send_message(
             chat_id=user_id,
-            text=(
-                f"🎉 <b>Şəxsi Qrupunuz Qoşuldu!</b>\n━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👥 <b>Qrup:</b> {group_title}\n"
-                f"🔔 <b>Bildiriş Yeri:</b> Qrup (Topics) 👥\n\n"
-                f"Bundan sonra yeni yaratdığınız axtarışlar üçün həmin qrupda avtomatik xüsusi Mövzular açılacaq.\n"
-                f"İstədiyiniz vaxt Ayarlardan tək kliklə yenidən Şəxsi Çata keçə bilərsiniz."
-            ),
+            text=t("group_connected_user", u_lang, title=group_title),
             parse_mode="HTML"
         )
     except Exception:
@@ -331,7 +320,9 @@ async def process_group_connection(message: Message, bot: Bot, user_id: int):
 async def cmd_connect_group(message: Message, bot: Bot):
     """Handle /connect command inside a personal group."""
     if message.chat.type not in ["group", "supergroup"]:
-        await message.answer("ℹ️ Bu əmr yalnız şəxsi superqrup daxilində işlədilir.")
+        user_id = message.from_user.id if message.from_user else None
+        u_lang = (await get_user_language(user_id)) or "en" if user_id else "en"
+        await message.answer(t("group_only_supergroup_msg", u_lang))
         return
 
     user_id = message.from_user.id if message.from_user else None
@@ -358,26 +349,23 @@ async def on_my_chat_member_updated(update: ChatMemberUpdated, bot: Bot):
     if not user_id:
         return
 
-    is_valid, error_msg = await validate_group_for_bot(bot, update.chat.id)
+    u_lang = (await get_user_language(user_id)) or "en" if user_id else "en"
+    is_valid, error_msg = await validate_group_for_bot(bot, update.chat.id, lang=u_lang)
     if not is_valid:
-        try:
-            await bot.send_message(chat_id=update.chat.id, text=error_msg, parse_mode="HTML")
-        except Exception:
-            pass
+        if error_msg:
+            try:
+                await bot.send_message(chat_id=update.chat.id, text=error_msg, parse_mode="HTML")
+            except Exception:
+                pass
         return
 
-    group_title = update.chat.title or "Şəxsi Qrup"
+    group_title = update.chat.title or t("group_default_title", u_lang)
     await link_user_group(user_id, update.chat.id, group_title)
 
     try:
         await bot.send_message(
             chat_id=update.chat.id,
-            text=(
-                f"✅ <b>Qrupunuz uğurla qoşuldu!</b>\n━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👥 <b>Qrup:</b> {group_title}\n"
-                f"👤 <b>Sahib ID:</b> <code>{user_id}</code>\n\n"
-                f"İndi yaratdığınız axtarışlar üçün bu qrupda avtomatik xüsusi Topic-lər (Mövzular) açılacaq və elanlar birbaşa bura göndəriləcək."
-            ),
+            text=t("group_connected_chat", u_lang, title=group_title, user_id=user_id),
             parse_mode="HTML"
         )
     except Exception:
@@ -386,13 +374,7 @@ async def on_my_chat_member_updated(update: ChatMemberUpdated, bot: Bot):
     try:
         await bot.send_message(
             chat_id=user_id,
-            text=(
-                f"🎉 <b>Şəxsi Qrupunuz Qoşuldu!</b>\n━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👥 <b>Qrup:</b> {group_title}\n"
-                f"🔔 <b>Bildiriş Yeri:</b> Qrup (Topics) 👥\n\n"
-                f"Bundan sonra yeni yaratdığınız axtarışlar üçün həmin qrupda avtomatik xüsusi Mövzular açılacaq.\n"
-                f"İstədiyiniz vaxt Ayarlardan tək kliklə yenidən Şəxsi Çata keçə bilərsiniz."
-            ),
+            text=t("group_connected_user", u_lang, title=group_title),
             parse_mode="HTML"
         )
     except Exception:
@@ -414,16 +396,17 @@ async def cmd_start(message: Message, lang: str = "en"):
                 target_uid = int(args[1].split("connect_")[-1])
             except Exception:
                 pass
-        await process_group_connection(message, bot=message.bot, user_id=target_uid)
+        if message.bot:
+            await process_group_connection(message, bot=message.bot, user_id=target_uid)
         return
 
     user_id = message.from_user.id
     existing_lang = await get_user_language(user_id)
 
-    if not existing_lang:
+    if not existing_lang or existing_lang not in LANGUAGES:
         # Prompt for language first
         await message.answer(
-            t("select_language", "az"),
+            t("select_language", "en"),
             reply_markup=get_language_keyboard(),
             parse_mode="HTML"
         )
@@ -445,7 +428,7 @@ async def callback_set_language(callback: CallbackQuery):
 
     target_lang = callback.data.replace("set_lang_", "").lower()
     if target_lang not in LANGUAGES:
-        target_lang = "az"
+        target_lang = "en"
 
     if not callback.from_user:
         await callback.answer()
@@ -482,9 +465,9 @@ async def cmd_settings(event: Message | CallbackQuery, lang: str = "en"):
     user_id = event.from_user.id
     hot_deals_enabled = await get_user_hot_deals_status(user_id)
     notify_settings = await get_user_notification_settings(user_id)
-    current_lang_name = LANGUAGES.get(lang, "Azərbaycan")
+    current_lang_name = LANGUAGES.get(lang, "English")
     status_label = t("status_active", lang) if hot_deals_enabled else t("status_disabled", lang)
-    dest_label = "Şəxsi Çat (DM) 🟢" if notify_settings.get("notification_target") == "dm" else f"Qrup 👥 ({notify_settings.get('connected_group_title') or 'Mövzular'})"
+    dest_label = t("btn_notify_dest_dm", lang) if notify_settings.get("notification_target") == "dm" else f"{t('btn_notify_dest_group', lang)} ({notify_settings.get('connected_group_title') or 'Topics'})"
     text = t("settings_title", lang, current_lang=current_lang_name, notify_dest=dest_label, hot_deals_status=status_label)
     kb = get_settings_keyboard(lang, hot_deals_enabled, notify_settings)
 
@@ -507,9 +490,9 @@ async def callback_toggle_hot_deals(callback: CallbackQuery, lang: str = "en"):
     notify_settings = await get_user_notification_settings(user_id)
     alert_msg = t("hot_deals_enabled_alert", lang) if new_status else t("hot_deals_disabled_alert", lang)
 
-    current_lang_name = LANGUAGES.get(lang, "Azərbaycan")
+    current_lang_name = LANGUAGES.get(lang, "English")
     status_label = t("status_active", lang) if new_status else t("status_disabled", lang)
-    dest_label = "Şəxsi Çat (DM) 🟢" if notify_settings.get("notification_target") == "dm" else f"Qrup 👥 ({notify_settings.get('connected_group_title') or 'Mövzular'})"
+    dest_label = t("btn_notify_dest_dm", lang) if notify_settings.get("notification_target") == "dm" else f"{t('btn_notify_dest_group', lang)} ({notify_settings.get('connected_group_title') or 'Topics'})"
     text = t("settings_title", lang, current_lang=current_lang_name, notify_dest=dest_label, hot_deals_status=status_label)
     kb = get_settings_keyboard(lang, new_status, notify_settings)
 
@@ -521,7 +504,7 @@ async def callback_toggle_hot_deals(callback: CallbackQuery, lang: str = "en"):
 @router.callback_query(F.data == "btn_connect_group_info")
 async def callback_connect_group_info(callback: CallbackQuery, lang: str = "en"):
     """Display deep linking guide to connect a personal supergroup."""
-    if not callback.from_user:
+    if not callback.from_user or not callback.bot:
         await callback.answer()
         return
     user_id = callback.from_user.id
@@ -532,27 +515,18 @@ async def callback_connect_group_info(callback: CallbackQuery, lang: str = "en")
     notify_settings = await get_user_notification_settings(user_id)
     connected_title = notify_settings.get("connected_group_title")
 
-    text = (
-        f"👥 <b>ŞƏXSİ QRUPUNUZUN QOŞULMASI (Topics Pro)</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"Elanların bir-birinə qarışmaması və hər avtomobil axtarışınızın ayrı <b>Topic-də (Mövzuda)</b> səliqəli toplanması üçün şəxsi qrupunuzu bota bağlaya bilərsiniz.\n\n"
-        f"<b>Qoşulma Qaydası:</b>\n"
-        f"1. Aşağıdakı düyməyə basaraq öz qrupunuzu seçin (və ya yeni qrup yaradın).\n"
-        f"2. Qrupun tənzimləmələrində <b>Topics (Mövzular)</b> seçiminin açıq olduğundan əmin olun.\n"
-        f"3. Botu qrupda <b>Admin</b> edin və <i>Manage Topics</i> icazəsini verin.\n"
-        f"4. Bot qrupa daxil olan kimi avtomatik təsdiqlənəcək (və ya qrup daxilində <code>/connect</code> yazın)."
-    )
+    text = t("group_connect_info", lang)
     if connected_title:
-        text += f"\n\n🔗 <b>Hazırda Qoşulu Qrup:</b> {connected_title}"
+        text += f"\n\n{t('current_connected_group', lang, title=connected_title)}"
 
     buttons = [
         [
-            InlineKeyboardButton(text="👥 Qrup Seç və Məni Əlavə Et", url=deep_link)
+            InlineKeyboardButton(text=t("btn_select_group_add", lang), url=deep_link)
         ]
     ]
     if connected_title:
         buttons.append([
-            InlineKeyboardButton(text="🔄 Qrupu Bağlantıdan Ayır", callback_data="btn_disconnect_group")
+            InlineKeyboardButton(text=t("btn_disconnect_group", lang), callback_data="btn_disconnect_group")
         ])
     buttons.append([
         InlineKeyboardButton(text=t("btn_back_to_settings", lang), callback_data="btn_settings")
@@ -571,7 +545,7 @@ async def callback_switch_to_dm(callback: CallbackQuery, lang: str = "en"):
         return
     user_id = callback.from_user.id
     await set_user_notification_target(user_id, "dm")
-    await callback.answer("✅ Bildiriş yeri Şəxsi Çata (DM) dəyişdirildi!", show_alert=True)
+    await callback.answer(t("group_switch_dm_alert", lang), show_alert=True)
     await cmd_settings(callback, lang)
 
 
@@ -583,7 +557,7 @@ async def callback_switch_to_group(callback: CallbackQuery, lang: str = "en"):
         return
     user_id = callback.from_user.id
     await set_user_notification_target(user_id, "group")
-    await callback.answer("✅ Bildiriş yeri Şəxsi Qrupa (Topics) dəyişdirildi!", show_alert=True)
+    await callback.answer(t("group_switch_group_alert", lang), show_alert=True)
     await cmd_settings(callback, lang)
 
 
@@ -595,7 +569,7 @@ async def callback_disconnect_group(callback: CallbackQuery, lang: str = "en"):
         return
     user_id = callback.from_user.id
     await unlink_user_group(user_id)
-    await callback.answer("✅ Şəxsi qrup ayrıldı. Bildirişlər şəxsi çatınıza yönləndirildi.", show_alert=True)
+    await callback.answer(t("group_disconnected_alert", lang), show_alert=True)
     await cmd_settings(callback, lang)
 
 
@@ -808,7 +782,7 @@ async def callback_hd_set_interval(callback: CallbackQuery, lang: str = "en"):
 @router.callback_query(F.data == "hd_param_pct")
 async def callback_hd_param_pct(callback: CallbackQuery, lang: str = "en"):
     """Select minimum profit margin percentage."""
-    text = "📈 <b>Minimum Xeyir / Marja Faizini Seçin:</b>\nYalnız hesablanmış xalis qazanc faizi bu həddə bərabər və ya yuxarı olan elanlar göndəriləcək:"
+    text = t("choose_min_pct", lang)
     buttons = [
         [
             InlineKeyboardButton(text="≥ 15%", callback_data="hd_set_pct_15"),
@@ -819,7 +793,7 @@ async def callback_hd_param_pct(callback: CallbackQuery, lang: str = "en"):
             InlineKeyboardButton(text="≥ 30%", callback_data="hd_set_pct_30")
         ],
         [
-            InlineKeyboardButton(text="🔙 Hot Deals Parametrləri", callback_data="btn_hot_deals_menu")
+            InlineKeyboardButton(text=t("btn_back_to_hd", lang), callback_data="btn_hot_deals_menu")
         ]
     ]
     if isinstance(callback.message, Message):
@@ -840,20 +814,20 @@ async def callback_hd_set_pct(callback: CallbackQuery, lang: str = "en"):
     kb = build_hot_deals_dashboard_keyboard(updated, lang)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    await callback.answer("✅ Qazanc faizi yeniləndi!")
+    await callback.answer(t("hd_pct_updated", lang))
 
 
 @router.callback_query(F.data == "hd_param_type")
 async def callback_hd_param_type(callback: CallbackQuery, lang: str = "en"):
     """Select Hot Deal focus category."""
-    text = "🎯 <b>Hot Deals Fokus Kateqoriyasını Seçin:</b>\nHansı növ qaynar təkliflərə üstünlük verirsiniz?"
+    text = t("choose_deal_type", lang)
     buttons = [
-        [InlineKeyboardButton(text="💎 Bütün Qaynar Fürsətlər", callback_data="hd_set_type_all")],
-        [InlineKeyboardButton(text="🚀 Ən Yüksək Marja (>25%)", callback_data="hd_set_type_top_profit")],
-        [InlineKeyboardButton(text="⚡ Ən Yeni Modellər (2018+)", callback_data="hd_set_type_new_cars")],
-        [InlineKeyboardButton(text="🛣️ Çox Az Probeg (<100k km)", callback_data="hd_set_type_low_mileage")],
-        [InlineKeyboardButton(text="🌟 Az Probeg + Çox Ucuz", callback_data="hd_set_type_low_mileage_cheap")],
-        [InlineKeyboardButton(text="🔙 Hot Deals Parametrləri", callback_data="btn_hot_deals_menu")]
+        [InlineKeyboardButton(text=get_deal_type_label("all", lang), callback_data="hd_set_type_all")],
+        [InlineKeyboardButton(text=get_deal_type_label("top_profit", lang), callback_data="hd_set_type_top_profit")],
+        [InlineKeyboardButton(text=get_deal_type_label("new_cars", lang), callback_data="hd_set_type_new_cars")],
+        [InlineKeyboardButton(text=get_deal_type_label("low_mileage", lang), callback_data="hd_set_type_low_mileage")],
+        [InlineKeyboardButton(text=get_deal_type_label("low_mileage_cheap", lang), callback_data="hd_set_type_low_mileage_cheap")],
+        [InlineKeyboardButton(text=t("btn_back_to_hd", lang), callback_data="btn_hot_deals_menu")]
     ]
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
@@ -873,16 +847,16 @@ async def callback_hd_set_type(callback: CallbackQuery, lang: str = "en"):
     kb = build_hot_deals_dashboard_keyboard(updated, lang)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    await callback.answer("✅ Kateqoriya yeniləndi!")
+    await callback.answer(t("hd_type_updated", lang))
 
 
 @router.callback_query(F.data == "hd_param_mileage")
 async def callback_hd_param_mileage(callback: CallbackQuery, lang: str = "en"):
     """Select max mileage for Hot Deals."""
-    text = "🧭 <b>Maksimum Yürüş Həddini Seçin:</b>\nBu yürüşdən çox olan maşınlar Hot Deals-dan kənarlaşdırılacaq:"
+    text = t("choose_max_mileage", lang)
     buttons = [
         [
-            InlineKeyboardButton(text="♾️ Limitsiz", callback_data="hd_set_mileage_0"),
+            InlineKeyboardButton(text=t("flim_unlimited", lang), callback_data="hd_set_mileage_0"),
             InlineKeyboardButton(text="≤ 60 000 km", callback_data="hd_set_mileage_60000")
         ],
         [
@@ -890,7 +864,7 @@ async def callback_hd_param_mileage(callback: CallbackQuery, lang: str = "en"):
             InlineKeyboardButton(text="≤ 150 000 km", callback_data="hd_set_mileage_150000")
         ],
         [
-            InlineKeyboardButton(text="🔙 Hot Deals Parametrləri", callback_data="btn_hot_deals_menu")
+            InlineKeyboardButton(text=t("btn_back_to_hd", lang), callback_data="btn_hot_deals_menu")
         ]
     ]
     if isinstance(callback.message, Message):
@@ -911,7 +885,7 @@ async def callback_hd_set_mileage(callback: CallbackQuery, lang: str = "en"):
     kb = build_hot_deals_dashboard_keyboard(updated, lang)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    await callback.answer("✅ Yürüş limiti yeniləndi!")
+    await callback.answer(t("hd_mileage_updated", lang))
 
 
 # ==============================================================================
@@ -924,36 +898,65 @@ async def cmd_hot_deals_hub(event: Message | CallbackQuery, lang: str = "en"):
     """Dedicated Hot Deals & Pan-European Arbitrage Explorer Hub."""
     user_id = event.from_user.id if event.from_user else 0
     hd = await get_user_hot_deals_settings(user_id)
-    status_label = "Aktiv 🟢" if hd.get("enabled", True) else "Deaktiv ❌"
+    status_label = t("status_active", lang) if hd.get("enabled", True) else t("status_disabled", lang)
     min_profit_str = f"{int(hd.get('min_profit_eur', 1500)):,}".replace(",", " ")
     min_pct_str = f"{int(hd.get('min_profit_percent', 15))}%"
-    deal_type_str = DEAL_TYPE_LABELS.get(hd.get("deal_type", "all"), "💎 Bütün Fürsətlər")
-    min_year_str = f"{hd.get('min_year', 2012)}+" if hd.get("min_year", 0) > 0 else "İstənilən"
-    max_price_str = f"≤ {int(hd.get('max_price_eur', 0)):,} €".replace(",", " ") if hd.get("max_price_eur", 0) > 0 else "Limitsiz ♾️"
+    deal_type_str = get_deal_type_label(hd.get("deal_type", "all"), lang)
+    min_year_str = f"{hd.get('min_year', 2012)}+" if hd.get("min_year", 0) > 0 else t("any_label", lang)
+    max_price_str = f"≤ {int(hd.get('max_price_eur', 0)):,} €".replace(",", " ") if hd.get("max_price_eur", 0) > 0 else t("unlimited", lang)
+
+    titles = {
+        "en": "🔥 <b>HOT DEALS & ARBITRAGE HUB</b>",
+        "pl": "🔥 <b>CENTRUM HOT DEALS I ARBITRAŻU</b>",
+        "ru": "🔥 <b>ЦЕНТР HOT DEALS И АРБИТРАЖА</b>"
+    }
+    subtitles = {
+        "en": "High-arbitrage cars across European markets priced significantly below the Polish (Otomoto) benchmark.",
+        "pl": "Samochody z wysokim arbitrażem w Europie o cenach znacznie niższych od mediany Otomoto.pl.",
+        "ru": "Автомобили с высоким арбитражем в Европе по ценам существенно ниже польского рынка Otomoto.pl."
+    }
+    lbl_alerts = {"en": "Private Alerts", "pl": "Powiadomienia", "ru": "Уведомления"}.get(lang, "Alerts")
+    lbl_profit = {"en": "Min. Net Profit", "pl": "Min. Zysk Netto", "ru": "Мин. Чистая Прибыль"}.get(lang, "Min. Profit")
+    lbl_pct = {"en": "Min. Margin", "pl": "Min. Marża", "ru": "Мин. Маржа"}.get(lang, "Min. Margin")
+    lbl_cat = {"en": "Category", "pl": "Kategoria", "ru": "Категория"}.get(lang, "Category")
+    lbl_year = {"en": "Year", "pl": "Rocznik", "ru": "Год"}.get(lang, "Year")
+    lbl_budget = {"en": "Budget", "pl": "Budżet", "ru": "Бюджет"}.get(lang, "Budget")
+    lbl_hint = {
+        "en": "<i>Browse live top deals below or customize your preferences:</i>",
+        "pl": "<i>Przeglądaj okazje poniżej lub zmień preferencje:</i>",
+        "ru": "<i>Смотрите актуальные сделки ниже или настройте фильтры:</i>"
+    }.get(lang, "Browse deals:")
+
+    hub_title = titles.get(lang, titles["en"])
+    hub_sub = subtitles.get(lang, subtitles["en"])
 
     text = (
-        f"🔥 <b>HOT DEALS & ARBİTRAJ MERKEZİ</b>\n"
+        f"{hub_title}\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"Avropanın ən böyük avtomobil bazarlarında qiyməti Polşa (Otomoto) bazarından kəskin ucuz olan yüksək qazanclı avtomobillər.\n\n"
-        f"• <b>Şəxsi Çat Bildirişləri:</b> {status_label}\n"
-        f"• <b>Min. Xalis Qazanc:</b> ≥ {min_profit_str} €\n"
-        f"• <b>Min. Qazanc Faizi:</b> ≥ {min_pct_str}\n"
-        f"• <b>Fokus Kateqoriyası:</b> {deal_type_str}\n"
-        f"• <b>İl Həddi:</b> {min_year_str} | <b>Büdcə:</b> {max_price_str}\n"
+        f"{hub_sub}\n\n"
+        f"• <b>{lbl_alerts}:</b> {status_label}\n"
+        f"• <b>{lbl_profit}:</b> ≥ {min_profit_str} €\n"
+        f"• <b>{lbl_pct}:</b> ≥ {min_pct_str}\n"
+        f"• <b>{lbl_cat}:</b> {deal_type_str}\n"
+        f"• <b>{lbl_year}:</b> {min_year_str} | <b>{lbl_budget}:</b> {max_price_str}\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"<i>Aşağıdakı menyudan dərhal ən son tapılmış qaynar təkliflərə baxa və ya fərdi filtrlərinizi tənzimləyə bilərsiniz:</i>"
+        f"{lbl_hint}"
     )
+
+    btn_browse_txt = {"en": "🔍 Browse Live Deals (Top 10)", "pl": "🔍 Przeglądaj Okazje (Top 10)", "ru": "🔍 Смотреть Сделки (Топ 10)"}.get(lang, "🔍 Top 10")
+    btn_pref_txt = t("btn_hot_deals_settings", lang)
+    btn_alerts_txt = {"en": "🔔 Alerts Toggle", "pl": "🔔 Powiadomienia", "ru": "🔔 Уведомления"}.get(lang, "🔔 Alerts")
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🔍 Canlı Fürsətlərə Bax (Top 10)", callback_data="hd_browse_0")
+            InlineKeyboardButton(text=btn_browse_txt, callback_data="hd_browse_0")
         ],
         [
-            InlineKeyboardButton(text="⚙️ Fərdi Hot Deals Parametrləri", callback_data="btn_hot_deals_menu"),
-            InlineKeyboardButton(text="🔘 Bildirişlər", callback_data="hd_toggle_status")
+            InlineKeyboardButton(text=btn_pref_txt, callback_data="btn_hot_deals_menu"),
+            InlineKeyboardButton(text=btn_alerts_txt, callback_data="hd_toggle_status")
         ],
         [
-            InlineKeyboardButton(text="🏠 Əsas Menyu", callback_data="btn_main_menu")
+            InlineKeyboardButton(text=t("btn_main_menu", lang), callback_data="btn_main_menu")
         ]
     ])
 
@@ -986,13 +989,14 @@ async def callback_hd_browse(callback: CallbackQuery, lang: str = "en"):
     )
 
     if not deals:
-        msg = (
-            "ℹ️ <b>Hazırda bu parametrlərə uyğun qaynar təklif tapılmadı.</b>\n\n"
-            "Hot Deals parametrlərindən minimum qazanc və ya faiz həddini aşağı salaraq daha çox təklif görə bilərsiniz."
-        )
+        msg = {
+            "en": "ℹ️ <b>No Hot Deals matching these criteria right now.</b>\n\nTry lowering the minimum net profit or margin in Preferences to see more deals.",
+            "pl": "ℹ️ <b>Brak ofert spełniających te kryteria w tej chwili.</b>\n\nSpróbuj zmniejszyć minimalny zysk lub marżę w Preferencjach.",
+            "ru": "ℹ️ <b>Сейчас нет сделок по этим критериям.</b>\n\nПопробуйте снизить порог минимальной прибыли в Настройках."
+        }.get(lang, "No deals found.")
         buttons = [
-            [InlineKeyboardButton(text="⚙️ Parametrləri Dəyiş", callback_data="btn_hot_deals_menu")],
-            [InlineKeyboardButton(text="🔙 Hot Deals Hub", callback_data="btn_hot_deals_hub")]
+            [InlineKeyboardButton(text=t("btn_hot_deals_settings", lang), callback_data="btn_hot_deals_menu")],
+            [InlineKeyboardButton(text=t("btn_back_to_hd", lang), callback_data="btn_hot_deals_hub")]
         ]
         if isinstance(callback.message, Message):
             await callback.message.edit_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
@@ -1017,33 +1021,46 @@ async def callback_hd_browse(callback: CallbackQuery, lang: str = "en"):
     country = deal["country_code"]
     url = deal["url"]
 
+    hd_header = {"en": "HOT DEAL", "pl": "OKAZJA", "ru": "ГОРЯЧАЯ СДЕЛКА"}.get(lang, "HOT DEAL")
+    lbl_src = {"en": "Source", "pl": "Źródło", "ru": "Источник"}.get(lang, "Source")
+    lbl_yr = {"en": "Year", "pl": "Rocznik", "ru": "Год"}.get(lang, "Year")
+    lbl_mil = {"en": "Mileage", "pl": "Przebieg", "ru": "Пробег"}.get(lang, "Mileage")
+    lbl_buy = {"en": "Purchase Price", "pl": "Cena Zakupu", "ru": "Цена Покупки"}.get(lang, "Price")
+    lbl_bench = {"en": "Poland Benchmark (Otomoto)", "pl": "Rynek w Polsce (Otomoto)", "ru": "Рынок Польши (Otomoto)"}.get(lang, "Benchmark")
+    lbl_prof = {"en": "Est. Net Profit", "pl": "Szacowany Zysk Netto", "ru": "Расчетная Прибыль"}.get(lang, "Est. Profit")
+    lbl_margin = {"en": "Profit Margin", "pl": "Marża Zysku", "ru": "Маржа Прибыли"}.get(lang, "Margin")
+
     deal_card = (
-        f"🔥 <b>QAYNAR FÜRSƏT ({page + 1}/{total})</b>\n"
+        f"🔥 <b>{hd_header} ({page + 1}/{total})</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"🚗 <b>{title}</b>\n"
-        f"• <b>Mənbə:</b> {country} ({platform})\n"
-        f"• <b>İl:</b> {year} | <b>Yürüş:</b> {mileage}\n\n"
-        f"💶 <b>Alış Qiyməti:</b> <b>{price_eur:,.0f} €</b>\n"
-        f"🇵🇱 <b>Polşa Bazar Qiyməti (Otomoto):</b> <b>~{bench_eur:,.0f} €</b>\n"
+        f"• <b>{lbl_src}:</b> {country} ({platform})\n"
+        f"• <b>{lbl_yr}:</b> {year} | <b>{lbl_mil}:</b> {mileage}\n\n"
+        f"💶 <b>{lbl_buy}:</b> <b>{price_eur:,.0f} €</b>\n"
+        f"🇵🇱 <b>{lbl_bench}:</b> <b>~{bench_eur:,.0f} €</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💰 <b>Təxmini Xalis Qazanc:</b> <b>+{profit_eur:,.0f} €</b>\n"
-        f"📈 <b>Xeyir Marjası:</b> <b>+{profit_pct}%</b>\n"
+        f"💰 <b>{lbl_prof}:</b> <b>+{profit_eur:,.0f} €</b>\n"
+        f"📈 <b>{lbl_margin}:</b> <b>+{profit_pct}%</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━"
     )
 
     nav_row = []
+    btn_prev_txt = {"en": "⬅️ Prev", "pl": "⬅️ Poprzedni", "ru": "⬅️ Назад"}.get(lang, "⬅️")
+    btn_next_txt = {"en": "Next ➡️", "pl": "Następny ➡️", "ru": "Вперед ➡️"}.get(lang, "➡️")
     if page > 0:
-        nav_row.append(InlineKeyboardButton(text="⬅️ Əvvəlki", callback_data=f"hd_browse_{page - 1}"))
+        nav_row.append(InlineKeyboardButton(text=btn_prev_txt, callback_data=f"hd_browse_{page - 1}"))
     nav_row.append(InlineKeyboardButton(text=f"📌 {page + 1}/{total}", callback_data="noop"))
     if page < total - 1:
-        nav_row.append(InlineKeyboardButton(text="Sonrakı ➡️", callback_data=f"hd_browse_{page + 1}"))
+        nav_row.append(InlineKeyboardButton(text=btn_next_txt, callback_data=f"hd_browse_{page + 1}"))
+
+    btn_view_txt = {"en": "🔗 View Original Listing", "pl": "🔗 Zobacz Ofertę", "ru": "🔗 Смотреть Объявление"}.get(lang, "🔗 View")
 
     buttons = [
         nav_row,
-        [InlineKeyboardButton(text="🔗 Orijinal Elana Bax", url=url)],
+        [InlineKeyboardButton(text=btn_view_txt, url=url)],
         [
-            InlineKeyboardButton(text="⚙️ Parametrlər", callback_data="btn_hot_deals_menu"),
-            InlineKeyboardButton(text="🔙 Hot Deals Hub", callback_data="btn_hot_deals_hub")
+            InlineKeyboardButton(text=t("btn_hot_deals_settings", lang), callback_data="btn_hot_deals_menu"),
+            InlineKeyboardButton(text=t("btn_back_to_hd", lang), callback_data="btn_hot_deals_hub")
         ]
     ]
 
@@ -1071,37 +1088,39 @@ async def callback_main_menu(callback: CallbackQuery, lang: str = "en"):
 @router.callback_query(F.data.in_(["btn_my_topics", "btn_my_filters"]))
 async def cmd_my_topics(event: Message | CallbackQuery, lang: str = "en"):
     """List and manage user's private search filters."""
+    # Always answer callback early to stop client spinner immediately
+    if isinstance(event, CallbackQuery):
+        try:
+            await event.answer()
+        except Exception:
+            pass
+
     if not event.from_user:
         return
     user_id = event.from_user.id
     filters = await get_user_filters(user_id)
 
     if not filters:
-        no_topics_text = (
-            "ℹ️ <b>Sizin hələlik aktiv axtarış filtriniz yoxdur.</b>\n\n"
-            "Avropa bazarlarını canlı izləmək üçün aşağıdakı düymə ilə yeni axtarış qurun."
-        )
+        no_topics_text = t("no_topics_found", lang)
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="➕ Yeni Axtarış Əlavə Et", callback_data="btn_new_search")],
-            [InlineKeyboardButton(text="🏠 Əsas Menyu", callback_data="btn_main_menu")]
+            [InlineKeyboardButton(text=t("btn_new_search", lang), callback_data="btn_new_search")],
+            [InlineKeyboardButton(text=t("btn_main_menu", lang), callback_data="btn_main_menu")]
         ])
         if isinstance(event, CallbackQuery):
             if isinstance(event.message, Message):
                 await event.message.edit_text(no_topics_text, reply_markup=kb, parse_mode="HTML")
-            await event.answer()
         else:
             await event.answer(no_topics_text, reply_markup=kb, parse_mode="HTML")
         return
 
     # Build topic list message
     lines = [
-        "📋 <b>ŞƏXSİ AXTARIŞ FİLTRLƏRİNİZ:</b>\n"
-        "<i>Tənzimləmək, redaktə etmək və ya elanları gətirmək üçün filtrin üzərinə toxunun:</i>\n"
+        t("my_topics_subtitle", lang) + "\n"
     ]
     for idx, f in enumerate(filters, start=1):
-        status_str = "Aktiv 🟢" if f["is_active"] == 1 else "Pauzada ⏸️"
+        status_str = t("status_active", lang) if f["is_active"] == 1 else t("status_paused", lang)
         make = f["make"]
-        model = f["model"] or "Bütün"
+        model = f["model"] or t("all_models", lang)
         y_min, y_max = f.get("year_min"), f.get("year_max")
         price_max = f.get("price_max_eur")
 
@@ -1109,9 +1128,11 @@ async def cmd_my_topics(event: Message | CallbackQuery, lang: str = "en"):
         if y_min and y_max:
             details.append(f"{y_min}-{y_max}")
         elif y_min:
-            details.append(f">{y_min}")
+            details.append(f"≥{y_min}")
+        elif y_max:
+            details.append(f"≤{y_max}")
         if price_max:
-            details.append(f"<{price_max:,.0f}€".replace(",", ""))
+            details.append(f"≤{price_max:,.0f}€".replace(",", " "))
 
         details_str = f" ({', '.join(details)})" if details else ""
         lines.append(f"<b>{idx}.</b> 🚙 <b>{make} {model}</b>{details_str} — [{status_str}]")
@@ -1122,7 +1143,7 @@ async def cmd_my_topics(event: Message | CallbackQuery, lang: str = "en"):
     buttons = []
     for f in filters[:10]:
         fid = f["id"]
-        status_action = "⏸️ Dayandır" if f["is_active"] == 1 else "▶️ Aktiv et"
+        status_action = t("btn_pause_action", lang) if f["is_active"] == 1 else t("btn_resume_action", lang)
         make = f["make"]
         model = f["model"] or ""
         row = [
@@ -1132,102 +1153,126 @@ async def cmd_my_topics(event: Message | CallbackQuery, lang: str = "en"):
         buttons.append(row)
 
     buttons.append([
-        InlineKeyboardButton(text="➕ Yeni Axtarış Əlavə Et", callback_data="btn_new_search"),
-        InlineKeyboardButton(text="🏠 Əsas Menyu", callback_data="btn_main_menu")
+        InlineKeyboardButton(text=t("btn_new_search", lang), callback_data="btn_new_search"),
+        InlineKeyboardButton(text=t("btn_main_menu", lang), callback_data="btn_main_menu")
     ])
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)
 
-    if isinstance(event, CallbackQuery):
-        if isinstance(event.message, Message):
-            await event.message.edit_text(header_text, reply_markup=kb, parse_mode="HTML")
-        await event.answer()
-    else:
-        await event.answer(header_text, reply_markup=kb, parse_mode="HTML")
+    try:
+        if isinstance(event, CallbackQuery):
+            if isinstance(event.message, Message):
+                await event.message.edit_text(header_text, reply_markup=kb, parse_mode="HTML")
+        else:
+            await event.answer(header_text, reply_markup=kb, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Error rendering cmd_my_topics: {e}")
 
 
 async def show_filter_details(event: Message | CallbackQuery, filter_id: int, lang: str = "en"):
     """Render full filter settings, editing dashboard, and live fetch action."""
+    if isinstance(event, CallbackQuery):
+        try:
+            await event.answer()
+        except Exception:
+            pass
+
     flt = await get_filter_by_id(filter_id)
     if not flt:
         return
     fid = flt["id"]
     make = flt["make"]
-    model = flt["model"] or "Bütün Modellər"
+    model = flt["model"] or t("all_models", lang)
     y_min = flt.get("year_min")
     y_max = flt.get("year_max")
-    year_str = f"{y_min} - {y_max}" if (y_min and y_max) else (f">{y_min}" if y_min else (f"<{y_max}" if y_max else "İstənilən"))
+    year_str = f"{y_min} - {y_max}" if (y_min and y_max) else (f"≥ {y_min}" if y_min else (f"≤ {y_max}" if y_max else t("any_label", lang)))
     
     p_min = flt.get("price_min_eur")
     p_max = flt.get("price_max_eur")
-    price_str = f"{p_min:,.0f} € - {p_max:,.0f} €".replace(",", " ") if (p_min and p_max) else (f"≤ {p_max:,.0f} €" if p_max else "Limitsiz")
+    price_str = f"{p_min:,.0f} € - {p_max:,.0f} €".replace(",", " ") if (p_min and p_max) else (f"≤ {p_max:,.0f} €".replace(",", " ") if p_max else t("unlimited", lang))
     
     mileage_max = flt.get("mileage_max")
-    mileage_str = f"≤ {mileage_max:,} km".replace(",", " ") if mileage_max else "Limitsiz"
+    mileage_str = f"≤ {mileage_max:,} km".replace(",", " ") if mileage_max else t("unlimited", lang)
     
     limit_val = flt.get("daily_alert_limit", 0) or 0
-    limit_label = format_limit_label(limit_val)
+    limit_label = format_limit_label(limit_val, lang)
     sent_today = flt.get("alerts_sent_today", 0) or 0
     
     age_val = flt.get("listing_age_hours", 0) or 0
-    age_label = format_age_label(age_val)
+    age_label = format_age_label(age_val, lang)
     
-    status_str = "Aktiv 🟢" if flt["is_active"] == 1 else "Pauzada ⏸️"
-    status_action = "⏸️ Dayandır" if flt["is_active"] == 1 else "▶️ Aktiv et"
+    status_str = t("status_active", lang) if flt["is_active"] == 1 else t("status_paused", lang)
+    status_action = t("btn_pause_action", lang) if flt["is_active"] == 1 else t("btn_resume_action", lang)
 
-    fuel_str = flt.get("fuel_type", "all").capitalize()
-    trans_str = flt.get("transmission", "all").capitalize()
-    country_str = flt.get("target_country", "ALL")
+    fuel_str = get_option_label("fuel", flt.get("fuel_type", "all"), lang)
+    trans_str = get_option_label("transmission", flt.get("transmission", "all"), lang)
+    country_str = get_option_label("country", flt.get("target_country", "ALL"), lang)
+
+    title_text = t("filter_details_title", lang, fid=fid)
+    car_lbl = t("filter_car_label", lang)
+    year_lbl = t("filter_year_label", lang)
+    price_lbl = t("filter_price_label", lang)
+    mileage_lbl = t("filter_mileage_label", lang)
+    fuel_lbl = t("filter_fuel_label", lang)
+    gearbox_lbl = t("filter_gearbox_label", lang)
+    market_lbl = t("filter_market_label", lang)
+    limit_lbl = t("filter_limit_label", lang)
+    age_lbl = t("filter_age_label", lang)
+    status_lbl = t("filter_status_label", lang)
+    edit_hint = t("filter_edit_hint", lang)
+    sent_str = t("sent_today_label", lang, count=sent_today)
 
     text = (
-        f"🛠 <b>FİLTR PARAMETRLƏRİ: #{fid}</b>\n"
+        f"{title_text}\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🚙 <b>Avtomobil:</b> {make} {model}\n"
-        f"📅 <b>İl Aralığı:</b> {year_str}\n"
-        f"💰 <b>Qiymət Büdcəsi:</b> {price_str}\n"
-        f"🧭 <b>Maks. Yürüş:</b> {mileage_str}\n"
-        f"⛽ <b>Yanacaq:</b> {fuel_str} | <b>Korobka:</b> {trans_str}\n"
-        f"🌍 <b>Bazar / Ölkə:</b> {country_str}\n"
+        f"🚙 <b>{car_lbl}:</b> {make} {model}\n"
+        f"📅 <b>{year_lbl}:</b> {year_str}\n"
+        f"💰 <b>{price_lbl}:</b> {price_str}\n"
+        f"🧭 <b>{mileage_lbl}:</b> {mileage_str}\n"
+        f"⛽ <b>{fuel_lbl}:</b> {fuel_str} | <b>{gearbox_lbl}:</b> {trans_str}\n"
+        f"🌍 <b>{market_lbl}:</b> {country_str}\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📊 <b>Gündəlik Limit:</b> {limit_label} (Bugün göndərildi: {sent_today})\n"
-        f"⏱️ <b>Elan Vaxt Aralığı:</b> {age_label}\n"
-        f"🔘 <b>Status:</b> {status_str}\n"
+        f"📊 <b>{limit_lbl}:</b> {limit_label} ({sent_str})\n"
+        f"⏱️ <b>{age_lbl}:</b> {age_label}\n"
+        f"🔘 <b>{status_lbl}:</b> {status_str}\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"<i>Parametrləri redaktə etmək və ya elan gətirmək üçün seçin:</i>"
+        f"{edit_hint}"
     )
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🚘 Marka / Model Dəyiş", callback_data=f"fedit_model_{fid}")
+            InlineKeyboardButton(text=t("btn_edit_model", lang), callback_data=f"fedit_model_{fid}")
         ],
         [
-            InlineKeyboardButton(text="📅 İl Aralığı", callback_data=f"fedit_year_{fid}"),
-            InlineKeyboardButton(text="💰 Qiymət Büdcəsi", callback_data=f"fedit_price_{fid}")
+            InlineKeyboardButton(text=t("btn_edit_year", lang), callback_data=f"fedit_year_{fid}"),
+            InlineKeyboardButton(text=t("btn_edit_price", lang), callback_data=f"fedit_price_{fid}")
         ],
         [
-            InlineKeyboardButton(text="🧭 Maks. Yürüş", callback_data=f"fedit_mileage_{fid}"),
-            InlineKeyboardButton(text="📊 Gündəlik Limit", callback_data=f"fedit_limit_{fid}")
+            InlineKeyboardButton(text=t("btn_edit_mileage", lang), callback_data=f"fedit_mileage_{fid}"),
+            InlineKeyboardButton(text=t("btn_edit_limit", lang), callback_data=f"fedit_limit_{fid}")
         ],
         [
-            InlineKeyboardButton(text="⏱️ Vaxt Aralığı (Keçmiş/Yeni)", callback_data=f"fedit_age_{fid}")
+            InlineKeyboardButton(text=t("btn_edit_age", lang), callback_data=f"fedit_age_{fid}")
         ],
         [
-            InlineKeyboardButton(text="📥 Mövcud Elanları İndi Gətir", callback_data=f"filter_fetch_now_{fid}")
+            InlineKeyboardButton(text=t("btn_fetch_now", lang), callback_data=f"filter_fetch_now_{fid}")
         ],
         [
             InlineKeyboardButton(text=status_action, callback_data=f"topic_toggle_{fid}"),
-            InlineKeyboardButton(text="🗑️ Filtri Sil", callback_data=f"topic_del_prompt_{fid}")
+            InlineKeyboardButton(text=t("btn_delete_filter", lang), callback_data=f"topic_del_prompt_{fid}")
         ],
         [
-            InlineKeyboardButton(text="🔙 Filtrlərim Siyahısı", callback_data="btn_my_topics")
+            InlineKeyboardButton(text=t("btn_back_to_filters", lang), callback_data="btn_my_topics")
         ]
     ])
 
-    if isinstance(event, CallbackQuery):
-        if isinstance(event.message, Message):
-            await event.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-        await event.answer()
-    else:
-        await event.answer(text, reply_markup=kb, parse_mode="HTML")
+    try:
+        if isinstance(event, CallbackQuery):
+            if isinstance(event.message, Message):
+                await event.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        else:
+            await event.answer(text, reply_markup=kb, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Error rendering show_filter_details: {e}")
 
 
 @router.callback_query(F.data.startswith("filter_details_"))
@@ -1247,24 +1292,25 @@ async def callback_filter_fetch_now(callback: CallbackQuery, bot: Bot, lang: str
         await callback.answer()
         return
     fid = int(callback.data.replace("filter_fetch_now_", ""))
+    if not isinstance(callback.message, Message) or not callback.from_user:
+        await callback.answer()
+        return
     flt = await get_filter_by_id(fid)
     if not flt or flt["user_id"] != callback.from_user.id:
-        await callback.answer("Filtr tapılmadı", show_alert=True)
+        await callback.answer(t("filter_not_found", lang), show_alert=True)
         return
 
-    await callback.answer("🔍 Mövcud elanlar axtarılır...", show_alert=False)
+    await callback.answer(t("fetch_searching", lang), show_alert=False)
     matches = await search_seen_listings_for_filter(flt, limit=5)
     if not matches:
         await callback.message.answer(
-            f"ℹ️ <b>Bazada hələlik bu parametrlərə uyğun keçmiş elan tapılmadı:</b>\n"
-            f"🚙 <b>{flt['make']} {flt.get('model') or ''}</b>\n\n"
-            f"<i>Avropa skaneri 24/7 aktivdir. Uyğun yeni elan dərc olunan kimi dərhal sizin bu şəxsi çatınıza göndəriləcək!</i>",
+            t("fetch_not_found", lang, make_model=f"{flt['make']} {flt.get('model') or ''}"),
             parse_mode="HTML"
         )
         return
 
     await callback.message.answer(
-        f"✅ <b>Bazada tapılan {len(matches)} ən son elan göndərilir:</b>",
+        t("fetch_sending", lang, count=len(matches)),
         parse_mode="HTML"
     )
 
@@ -1278,17 +1324,19 @@ async def callback_filter_fetch_now(callback: CallbackQuery, bot: Bot, lang: str
         platform = item["platform"]
         country = item["country_code"]
 
-        card_text = (
-            f"🚗 <b>{title}</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"• <b>Mənbə:</b> {country} ({platform})\n"
-            f"• <b>İl:</b> {year} | <b>Yürüş:</b> {mileage}\n"
-            f"• <b>Qiymət:</b> <b>{price:,.0f} €</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🔗 <a href='{url}'>Elana Keçid (Orijinal Elan)</a>"
+        card_text = t(
+            "fetch_card",
+            lang,
+            title=title,
+            country=country,
+            platform=platform,
+            year=year,
+            mileage=mileage,
+            price=price,
+            url=url
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔗 Elana Bax", url=url)]
+            [InlineKeyboardButton(text=t("btn_view_listing", lang), url=url)]
         ])
         try:
             if photo and photo.startswith("http"):
@@ -1306,19 +1354,22 @@ async def callback_filter_fetch_now(callback: CallbackQuery, bot: Bot, lang: str
 @router.callback_query(F.data.startswith("fedit_limit_"))
 async def callback_fedit_limit(callback: CallbackQuery, lang: str = "en"):
     """Select daily alert limit for this filter."""
+    if not callback.data:
+        await callback.answer()
+        return
     fid = int(callback.data.replace("fedit_limit_", ""))
-    text = "📊 <b>Gündəlik Bildiriş Limitini Seçin:</b>\nBu filtr üzrə gün ərzində şəxsi çatınıza ən çox neçə elan göndərilə bilər?"
+    text = t("daily_limit_title", lang)
     buttons = [
         [
-            InlineKeyboardButton(text="♾️ Limitsiz", callback_data=f"flim_set_{fid}_0"),
-            InlineKeyboardButton(text="🔟 10 elan / gün", callback_data=f"flim_set_{fid}_10")
+            InlineKeyboardButton(text=t("flim_unlimited", lang), callback_data=f"flim_set_{fid}_0"),
+            InlineKeyboardButton(text=t("flim_per_day", lang, n="🔟 10"), callback_data=f"flim_set_{fid}_10")
         ],
         [
-            InlineKeyboardButton(text="2️⃣5️⃣ 25 elan / gün", callback_data=f"flim_set_{fid}_25"),
-            InlineKeyboardButton(text="5️⃣0️⃣ 50 elan / gün", callback_data=f"flim_set_{fid}_50")
+            InlineKeyboardButton(text=t("flim_per_day", lang, n="2️⃣5️⃣ 25"), callback_data=f"flim_set_{fid}_25"),
+            InlineKeyboardButton(text=t("flim_per_day", lang, n="5️⃣0️⃣ 50"), callback_data=f"flim_set_{fid}_50")
         ],
         [
-            InlineKeyboardButton(text="🔙 Geri", callback_data=f"filter_details_{fid}")
+            InlineKeyboardButton(text=t("btn_back", lang), callback_data=f"filter_details_{fid}")
         ]
     ]
     if isinstance(callback.message, Message):
@@ -1329,37 +1380,40 @@ async def callback_fedit_limit(callback: CallbackQuery, lang: str = "en"):
 @router.callback_query(F.data.startswith("flim_set_"))
 async def callback_flim_set(callback: CallbackQuery, lang: str = "en"):
     """Save daily limit and return to filter details."""
+    if not callback.data:
+        await callback.answer()
+        return
     parts = callback.data.split("_")
     fid = int(parts[2])
     val = int(parts[3])
     await update_user_filter(fid, daily_alert_limit=val)
-    await callback.answer("✅ Gündəlik limit yeniləndi!")
+    await callback.answer(t("daily_limit_updated", lang))
     await show_filter_details(callback, fid, lang)
 
 
 @router.callback_query(F.data.startswith("fedit_age_"))
 async def callback_fedit_age(callback: CallbackQuery, lang: str = "en"):
     """Select listing freshness / age window."""
+    if not callback.data:
+        await callback.answer()
+        return
     fid = int(callback.data.replace("fedit_age_", ""))
-    text = (
-        "⏱️ <b>Elan Vaxt Aralığını Seçin:</b>\n"
-        "Skaner yalnız bu vaxt ərzində çıxan elanları çatdırsın:"
-    )
+    text = t("age_window_title", lang)
     buttons = [
         [
-            InlineKeyboardButton(text="⚡ Real-Time (Yalnız Canlı)", callback_data=f"fage_set_{fid}_0"),
-            InlineKeyboardButton(text="⏱️ Son 1 Saat", callback_data=f"fage_set_{fid}_1")
+            InlineKeyboardButton(text=t("fage_realtime", lang), callback_data=f"fage_set_{fid}_0"),
+            InlineKeyboardButton(text=t("fage_1h", lang), callback_data=f"fage_set_{fid}_1")
         ],
         [
-            InlineKeyboardButton(text="📅 Son 24 Saat (1 gün)", callback_data=f"fage_set_{fid}_24"),
-            InlineKeyboardButton(text="🗓️ Son 7 Gün (1 həftə)", callback_data=f"fage_set_{fid}_168")
+            InlineKeyboardButton(text=t("fage_24h", lang), callback_data=f"fage_set_{fid}_24"),
+            InlineKeyboardButton(text=t("fage_7d", lang), callback_data=f"fage_set_{fid}_168")
         ],
         [
-            InlineKeyboardButton(text="🗓️ Son 30 Gün (1 ay)", callback_data=f"fage_set_{fid}_720"),
-            InlineKeyboardButton(text="🌐 Bütün Mövcud Elanlar", callback_data=f"fage_set_{fid}_99999")
+            InlineKeyboardButton(text=t("fage_30d", lang), callback_data=f"fage_set_{fid}_720"),
+            InlineKeyboardButton(text=t("fage_all", lang), callback_data=f"fage_set_{fid}_99999")
         ],
         [
-            InlineKeyboardButton(text="🔙 Geri", callback_data=f"filter_details_{fid}")
+            InlineKeyboardButton(text=t("btn_back", lang), callback_data=f"filter_details_{fid}")
         ]
     ]
     if isinstance(callback.message, Message):
@@ -1370,34 +1424,33 @@ async def callback_fedit_age(callback: CallbackQuery, lang: str = "en"):
 @router.callback_query(F.data.startswith("fage_set_"))
 async def callback_fage_set(callback: CallbackQuery, lang: str = "en"):
     """Save listing age window and return to filter details."""
+    if not callback.data:
+        await callback.answer()
+        return
     parts = callback.data.split("_")
     fid = int(parts[2])
     val = int(parts[3])
     await update_user_filter(fid, listing_age_hours=val)
-    await callback.answer("✅ Vaxt aralığı yeniləndi!")
+    await callback.answer(t("age_window_updated", lang))
     await show_filter_details(callback, fid, lang)
 
 
 @router.callback_query(F.data.startswith("fedit_model_"))
 async def callback_fedit_model(callback: CallbackQuery, state: FSMContext, lang: str = "en"):
     """Start model edit flow."""
+    if not callback.data or not callback.from_user:
+        await callback.answer()
+        return
     fid = int(callback.data.replace("fedit_model_", ""))
     flt = await get_filter_by_id(fid)
     if not flt or flt["user_id"] != callback.from_user.id:
-        await callback.answer("Filtr tapılmadı", show_alert=True)
+        await callback.answer(t("filter_not_found", lang), show_alert=True)
         return
 
     await state.update_data(edit_filter_id=fid)
     await state.set_state(FilterEditState.waiting_for_model)
 
-    prompt = (
-        f"🚘 <b>Model və ya Marka Dəyişdirilməsi:</b>\n\n"
-        f"Hazırkı axtarış: <b>{flt['make']} {flt.get('model') or ''}</b>\n\n"
-        f"Yeni modeli yazın (məsələn: <code>Auris</code>, <code>Prius</code>, <code>X5</code>, <code>Passat</code>).\n"
-        f"Həm markanı, həm də modeli dəyişmək üçün birlikdə yazın (məsələn: <code>Toyota Auris</code> və ya <code>BMW 520</code>).\n"
-        f"Bütün modelləri seçmək üçün <code>-</code> yazın.\n\n"
-        f"<i>Ləğv etmək üçün /cancel yazın.</i>"
-    )
+    prompt = t("edit_model_prompt", lang, make=flt['make'], model=flt.get('model') or '')
     if isinstance(callback.message, Message):
         await callback.message.edit_text(prompt, parse_mode="HTML")
     await callback.answer()
@@ -1409,7 +1462,7 @@ async def process_fedit_model(message: Message, state: FSMContext, lang: str = "
     text = (message.text or "").strip()
     if text == "/cancel":
         await state.clear()
-        await message.answer("❌ Dəyişiklik ləğv edildi.", reply_markup=get_main_menu_keyboard(lang))
+        await message.answer(t("edit_cancelled", lang), reply_markup=get_main_menu_keyboard(lang))
         return
 
     data = await state.get_data()
@@ -1423,9 +1476,10 @@ async def process_fedit_model(message: Message, state: FSMContext, lang: str = "
         await state.clear()
         return
 
-    if text in ("-", "all", "bütün"):
+    all_models_label = {"en": "All Models", "pl": "Wszystkie Modele", "ru": "Все Модели"}.get(lang, "All Models")
+    if text in ("-", "all"):
         await update_user_filter(fid, model="")
-        new_label = f"{flt['make']} (Bütün Modellər)"
+        new_label = f"{flt['make']} ({all_models_label})"
     else:
         # Check if user entered "Toyota Auris"
         parts = text.split(maxsplit=1)
@@ -1441,28 +1495,26 @@ async def process_fedit_model(message: Message, state: FSMContext, lang: str = "
             new_label = f"{flt['make']} {new_model}"
 
     await state.clear()
-    await message.answer(f"✅ Filtr uğurla yeniləndi: <b>{new_label}</b>", parse_mode="HTML")
+    await message.answer(t("edit_model_success", lang, label=new_label), parse_mode="HTML")
     await show_filter_details(message, fid, lang)
 
 
 @router.callback_query(F.data.startswith("fedit_year_"))
 async def callback_fedit_year(callback: CallbackQuery, state: FSMContext, lang: str = "en"):
     """Start year range edit flow."""
+    if not callback.data or not callback.from_user:
+        await callback.answer()
+        return
     fid = int(callback.data.replace("fedit_year_", ""))
     flt = await get_filter_by_id(fid)
     if not flt or flt["user_id"] != callback.from_user.id:
-        await callback.answer("Filtr tapılmadı", show_alert=True)
+        await callback.answer(t("filter_not_found", lang), show_alert=True)
         return
 
     await state.update_data(edit_filter_id=fid)
     await state.set_state(FilterEditState.waiting_for_year)
 
-    prompt = (
-        f"📅 <b>İl Aralığını Daxil Edin:</b>\n\n"
-        f"Məsələn: <code>2016 2023</code> (min və max il) və ya yalnız minimum il üçün <code>2015</code> yazın.\n"
-        f"İl məhdudiyyətini silmək üçün <code>-</code> yazın.\n\n"
-        f"<i>Ləğv etmək üçün /cancel yazın.</i>"
-    )
+    prompt = t("edit_year_prompt", lang)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(prompt, parse_mode="HTML")
     await callback.answer()
@@ -1474,7 +1526,7 @@ async def process_fedit_year(message: Message, state: FSMContext, lang: str = "e
     text = (message.text or "").strip()
     if text == "/cancel":
         await state.clear()
-        await message.answer("❌ Dəyişiklik ləğv edildi.", reply_markup=get_main_menu_keyboard(lang))
+        await message.answer(t("edit_cancelled", lang), reply_markup=get_main_menu_keyboard(lang))
         return
 
     data = await state.get_data()
@@ -1486,13 +1538,13 @@ async def process_fedit_year(message: Message, state: FSMContext, lang: str = "e
     if text in ("-", "0", "all"):
         await update_user_filter(fid, year_min=None, year_max=None)
         await state.clear()
-        await message.answer("✅ İl məhdudiyyəti silindi.", parse_mode="HTML")
+        await message.answer(t("edit_year_cleared", lang), parse_mode="HTML")
         await show_filter_details(message, fid, lang)
         return
 
     parts = [int(p) for p in text.split() if p.isdigit()]
     if not parts:
-        await message.answer("⚠️ Zəhmət olmasa düzgün il daxil edin (məs: <code>2015</code> və ya <code>2015 2022</code>):", parse_mode="HTML")
+        await message.answer(t("edit_year_invalid", lang), parse_mode="HTML")
         return
 
     y_min = parts[0]
@@ -1502,28 +1554,27 @@ async def process_fedit_year(message: Message, state: FSMContext, lang: str = "e
 
     await update_user_filter(fid, year_min=y_min, year_max=y_max)
     await state.clear()
-    await message.answer(f"✅ İl aralığı yeniləndi: <b>{y_min}{' - ' + str(y_max) if y_max else '+'}</b>", parse_mode="HTML")
+    range_str = f"{y_min}{' - ' + str(y_max) if y_max else '+'}"
+    await message.answer(t("edit_year_success", lang, range=range_str), parse_mode="HTML")
     await show_filter_details(message, fid, lang)
 
 
 @router.callback_query(F.data.startswith("fedit_price_"))
 async def callback_fedit_price(callback: CallbackQuery, state: FSMContext, lang: str = "en"):
     """Start price range edit flow."""
+    if not callback.data or not callback.from_user:
+        await callback.answer()
+        return
     fid = int(callback.data.replace("fedit_price_", ""))
     flt = await get_filter_by_id(fid)
     if not flt or flt["user_id"] != callback.from_user.id:
-        await callback.answer("Filtr tapılmadı", show_alert=True)
+        await callback.answer(t("filter_not_found", lang), show_alert=True)
         return
 
     await state.update_data(edit_filter_id=fid)
     await state.set_state(FilterEditState.waiting_for_price)
 
-    prompt = (
-        f"💰 <b>Qiymət Büdcəsini Daxil Edin (EUR):</b>\n\n"
-        f"Məsələn: <code>4000 9000</code> (min və max) və ya yalnız maksimum büdcə üçün <code>9000</code> yazın.\n"
-        f"Məhdudiyyəti silmək üçün <code>-</code> yazın.\n\n"
-        f"<i>Ləğv etmək üçün /cancel yazın.</i>"
-    )
+    prompt = t("edit_price_prompt", lang)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(prompt, parse_mode="HTML")
     await callback.answer()
@@ -1535,7 +1586,7 @@ async def process_fedit_price(message: Message, state: FSMContext, lang: str = "
     text = (message.text or "").strip()
     if text == "/cancel":
         await state.clear()
-        await message.answer("❌ Dəyişiklik ləğv edildi.", reply_markup=get_main_menu_keyboard(lang))
+        await message.answer(t("edit_cancelled", lang), reply_markup=get_main_menu_keyboard(lang))
         return
 
     data = await state.get_data()
@@ -1547,13 +1598,13 @@ async def process_fedit_price(message: Message, state: FSMContext, lang: str = "
     if text in ("-", "0", "all"):
         await update_user_filter(fid, price_min_eur=None, price_max_eur=None)
         await state.clear()
-        await message.answer("✅ Qiymət məhdudiyyəti silindi.", parse_mode="HTML")
+        await message.answer(t("edit_price_cleared", lang), parse_mode="HTML")
         await show_filter_details(message, fid, lang)
         return
 
     nums = [float(p) for p in text.replace(",", " ").split() if p.replace(".", "", 1).isdigit()]
     if not nums:
-        await message.answer("⚠️ Zəhmət olmasa düzgün qiymət daxil edin (məs: <code>5000 12000</code>):", parse_mode="HTML")
+        await message.answer(t("edit_price_invalid", lang), parse_mode="HTML")
         return
 
     if len(nums) == 1:
@@ -1566,28 +1617,26 @@ async def process_fedit_price(message: Message, state: FSMContext, lang: str = "
     await update_user_filter(fid, price_min_eur=p_min, price_max_eur=p_max)
     await state.clear()
     price_label = f"{p_min:,.0f} € - {p_max:,.0f} €" if p_min else f"≤ {p_max:,.0f} €"
-    await message.answer(f"✅ Qiymət büdcəsi yeniləndi: <b>{price_label}</b>", parse_mode="HTML")
+    await message.answer(t("edit_price_success", lang, price=price_label), parse_mode="HTML")
     await show_filter_details(message, fid, lang)
 
 
 @router.callback_query(F.data.startswith("fedit_mileage_"))
 async def callback_fedit_mileage(callback: CallbackQuery, state: FSMContext, lang: str = "en"):
     """Start mileage edit flow."""
+    if not callback.data or not callback.from_user:
+        await callback.answer()
+        return
     fid = int(callback.data.replace("fedit_mileage_", ""))
     flt = await get_filter_by_id(fid)
     if not flt or flt["user_id"] != callback.from_user.id:
-        await callback.answer("Filtr tapılmadı", show_alert=True)
+        await callback.answer(t("filter_not_found", lang), show_alert=True)
         return
 
     await state.update_data(edit_filter_id=fid)
     await state.set_state(FilterEditState.waiting_for_mileage)
 
-    prompt = (
-        f"🧭 <b>Maksimum Yürüşü Daxil Edin (km):</b>\n\n"
-        f"Məsələn: <code>150000</code> və ya <code>180000</code>.\n"
-        f"Məhdudiyyəti silmək üçün <code>-</code> yazın.\n\n"
-        f"<i>Ləğv etmək üçün /cancel yazın.</i>"
-    )
+    prompt = t("edit_mileage_prompt", lang)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(prompt, parse_mode="HTML")
     await callback.answer()
@@ -1599,7 +1648,7 @@ async def process_fedit_mileage(message: Message, state: FSMContext, lang: str =
     text = (message.text or "").strip()
     if text == "/cancel":
         await state.clear()
-        await message.answer("❌ Dəyişiklik ləğv edildi.", reply_markup=get_main_menu_keyboard(lang))
+        await message.answer(t("edit_cancelled", lang), reply_markup=get_main_menu_keyboard(lang))
         return
 
     data = await state.get_data()
@@ -1611,19 +1660,19 @@ async def process_fedit_mileage(message: Message, state: FSMContext, lang: str =
     if text in ("-", "0", "all"):
         await update_user_filter(fid, mileage_max=None)
         await state.clear()
-        await message.answer("✅ Yürüş məhdudiyyəti silindi.", parse_mode="HTML")
+        await message.answer(t("edit_mileage_cleared", lang), parse_mode="HTML")
         await show_filter_details(message, fid, lang)
         return
 
     digits = [int(p) for p in text.replace(",", "").replace(" ", "").split() if p.isdigit()]
     if not digits:
-        await message.answer("⚠️ Zəhmət olmasa rəqəm daxil edin (məs: <code>150000</code>):", parse_mode="HTML")
+        await message.answer(t("edit_mileage_invalid", lang), parse_mode="HTML")
         return
 
     m_max = digits[0]
     await update_user_filter(fid, mileage_max=m_max)
     await state.clear()
-    await message.answer(f"✅ Maksimum yürüş yeniləndi: <b>{m_max:,} km</b>", parse_mode="HTML")
+    await message.answer(t("edit_mileage_success", lang, mileage=f"{m_max:,}".replace(",", " ")), parse_mode="HTML")
     await show_filter_details(message, fid, lang)
 
 
@@ -1636,12 +1685,12 @@ async def callback_topic_toggle(callback: CallbackQuery, lang: str = "en"):
     fid = int(callback.data.replace("topic_toggle_", ""))
     flt = await get_filter_by_id(fid)
     if not flt or flt["user_id"] != callback.from_user.id:
-        await callback.answer("Filtr tapılmadı", show_alert=True)
+        await callback.answer(t("filter_not_found", lang), show_alert=True)
         return
 
     new_st = await toggle_filter_status(fid)
-    st_text = "aktivləşdirildi ▶️" if new_st == 1 else "dayandırıldı ⏸️"
-    await callback.answer(f"Filtr #{fid} {st_text}!")
+    st_text = t("filter_toggle_activated", lang) if new_st == 1 else t("filter_toggle_paused", lang)
+    await callback.answer(t("filter_toggle_alert", lang, fid=fid, status=st_text))
     await show_filter_details(callback, fid, lang)
 
 
@@ -1654,14 +1703,14 @@ async def callback_topic_delete_prompt(callback: CallbackQuery, lang: str = "en"
     fid = int(callback.data.replace("topic_del_prompt_", ""))
     flt = await get_filter_by_id(fid)
     if not flt or flt["user_id"] != callback.from_user.id:
-        await callback.answer("Filtr tapılmadı", show_alert=True)
+        await callback.answer(t("filter_not_found", lang), show_alert=True)
         return
 
-    text = f"⚠️ <b>Bu axtarış filtrini silmək istədiyinizə əminsiniz?</b>\n\n🚙 <b>{flt['make']} {flt.get('model') or ''}</b>"
+    text = t("confirm_delete_filter", lang, make_model=f"{flt['make']} {flt.get('model') or ''}")
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="✅ Bəli, Sil", callback_data=f"topic_del_confirm_{fid}"),
-            InlineKeyboardButton(text="❌ Xeyr, Ləğv et", callback_data=f"filter_details_{fid}")
+            InlineKeyboardButton(text=t("btn_yes_delete", lang), callback_data=f"topic_del_confirm_{fid}"),
+            InlineKeyboardButton(text=t("btn_no_cancel", lang), callback_data=f"filter_details_{fid}")
         ]
     ])
 
@@ -1679,7 +1728,7 @@ async def callback_topic_delete_confirm(callback: CallbackQuery, bot: Bot, lang:
     fid = int(callback.data.replace("topic_del_confirm_", ""))
     flt = await get_filter_by_id(fid)
     if not flt or flt["user_id"] != callback.from_user.id:
-        await callback.answer("Filtr tapılmadı", show_alert=True)
+        await callback.answer(t("filter_not_found", lang), show_alert=True)
         return
 
     topic_id = flt.get("topic_id")
@@ -1692,8 +1741,8 @@ async def callback_topic_delete_confirm(callback: CallbackQuery, bot: Bot, lang:
     await delete_filter(fid)
     
     if isinstance(callback.message, Message):
-        await callback.message.edit_text("🗑 <b>Filtr uğurla silindi.</b>", reply_markup=get_main_menu_keyboard(lang), parse_mode="HTML")
-    await callback.answer("Filtr silindi!")
+        await callback.message.edit_text(t("filter_deleted_msg", lang), reply_markup=get_main_menu_keyboard(lang), parse_mode="HTML")
+    await callback.answer(t("filter_deleted_alert", lang))
 
 
 # ==============================================================================

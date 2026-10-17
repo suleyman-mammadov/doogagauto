@@ -3,7 +3,7 @@ from pathlib import Path
 import asyncio
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Union
 
 # Ensure project root is in sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -23,8 +23,10 @@ from database.queries import (
     get_eligible_hot_deals_users,
     update_user_hot_deals_sent_timestamp,
     update_user_filter,
-    set_user_notification_target
+    set_user_notification_target,
+    get_user_language
 )
+from bot.locales.texts import t
 from scrapers.base_scraper import BaseScraper, CarListing, set_cached_proxy_settings
 from scrapers.baltic.ss_latvia import SSLatviaScraper
 from scrapers.baltic.autoplius_lt import AutopliusLtScraper
@@ -306,12 +308,10 @@ class ArbitrageScheduler:
 
                     # 2. Inform user in DM about the group error
                     try:
+                        u_lang = await get_user_language(user_id) or "en"
                         await self.bot.send_message(
                             chat_id=user_id,
-                            text=(
-                                "⚠️ <b>Qrupunuza daxil olarkən xəta baş verdi</b> (icazələr dəyişdirilib və ya qrup silinib).\n\n"
-                                "Elanları qaçırmamağınız üçün bildirişlər avtomatik olaraq <b>şəxsi çatınıza</b> yönləndirildi."
-                            ),
+                            text=t("group_error_fallback", u_lang),
                             parse_mode="HTML"
                         )
                     except Exception as notify_err:

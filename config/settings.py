@@ -1,4 +1,4 @@
-from typing import Optional, Union, Dict
+from typing import Optional, Union, Dict, Any, List
 from pydantic_settings import BaseSettings, SettingsConfigDict  # type: ignore
 from pydantic import Field, field_validator  # type: ignore
 
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
             return None
 
     # Admin Telegram IDs
-    ADMIN_USER_IDS: list[int] = Field(
+    ADMIN_USER_IDS: Any = Field(
         default_factory=list,
         description="List of admin Telegram user IDs authorized for /admin"
     )
