@@ -263,11 +263,11 @@ def format_topic_link(group_chat_id: Any, topic_id: int) -> str:
 
 
 # ==============================================================================
-# /START & LANGUAGE SELECTION
+# /START & LANGUAGE SELECTIONqweqw
 # ==============================================================================
 
 async def validate_group_for_bot(bot: Bot, chat_id: int, lang: Optional[str] = "en") -> Tuple[bool, str]:
-    """Verify that group is a forum, bot is administrator, and has manage_topics & pin permissions."""
+    """Verify that group is a forum, botis administrator, and has manage_topics & pin permissions."""
     try:
         chat = await bot.get_chat(chat_id)
         if not getattr(chat, "is_forum", False):
