@@ -1,169 +1,194 @@
-# 🚗 Schengen Car Arbitrage & Live Scanner Bot (Pan-European Edition)
+---
 
-**An automated real-time scanning system across the Schengen zone for second-hand vehicles and classified platforms, designed for buyers, dealers, and car flippers in Poland.**
+# 🚗 DoogagAuto Bot: Access and Testing Guide
 
-The system compares regional prices against Polish market benchmark values (**Otomoto.pl** median prices), calculates net profit margins (arbitrage) accounting for logistics, customs, and registration costs, and delivers real-time listing cards directly to dedicated forum topics (**Topics**) in a Telegram supergroup.
+Want to test our real-time Schengen car arbitrage scanner? Follow these simple steps to find and launch the bot on Telegram
+
+1. **Open Telegram:** Launch the Telegram app on your mobile device or desktop.
+2. **Search for the Bot:** Type `@doogagauto_bot` into the global search bar (or use the direct link provided by the administrator).
+3. **Initialize the Bot:** Open the chat window and click the **Start** button (or type `/start`) to activate the system.
+4. **Set Up Your First Filter:** Use the interactive menu or the `/newfilter` command to choose your preferred car make, model, year range, budget, and target Schengen countries.
+5. **Get Live Alerts:** Watch as the system matches foreign listings and delivers high-margin deals and *Hot Deals* directly to your chat or group topics! 🚀
 
 ---
 
-## 📌 1. Schengen Zone Platform Matrix
+# 🛠️ DoogagAuto Engine: High-Performance Pan-European Arbitrage & Anti-Bot Architecture
 
-Platforms are categorized into two primary tiers:
-* **Classifieds / Peer-to-Peer (P2P):** Direct from owners, zero dealer markup, where the cheapest emergency and fast-sale listings appear.
-* **Professional Auto Portals (B2C / Aggregators):** Clean structured filtering with higher anti-bot security..
+**Enterprise-grade, asynchronous Schengen car arbitrage, web scraper, and real-time notification platform.**
 
-| Region | Country | Platforms | Security / Tier |
-| :--- | :--- | :--- | :--- |
-| **Western Europe** | 🇩🇪 Germany | **Mobile.de**, **Kleinanzeigen.de**, AutoScout24.de | Tier 3 (curl_cffi Chrome Impersonation) |
-| **Western Europe** | 🇫🇷 France | **Leboncoin.fr**, LaCentrale.fr, ParuVendu.fr | Tier 3 (curl_cffi Chrome Impersonation) |
-| **Western Europe** | 🇮🇹 Italy | **Subito.it**, AutoScout24.it, Automobile.it | Tier 3 (curl_cffi Chrome Impersonation) |
-| **Baltics** | 🇱🇹 Lithuania | **Autoplius.lt**, Autogidas.lt, Skelbiu.lt | Tier 2 (Medium / HTTP/2) |
-| **Baltics** | 🇱🇻 Latvia | **SS.com** (formerly ss.lv), Dalder.lv | Tier 1 (Simple HTML Lexbor) |
-| **Central Europe** | 🇨🇿 Czechia | **Bazos.cz**, **Sauto.cz**, TipCars.com | Tier 1 / 2 (CZK -> EUR conversion) |
-| **Central Europe** | 🇸🇰 Slovakia | **Bazos.sk**, Autobazar.eu, Autobazar.sk | Tier 1 (Simple HTML Lexbor) |
-| **Nordic & Other** | 🇳🇱 Netherlands, 🇧🇪 Belgium, 🇦🇹 Austria | Marktplaats.nl, 2dehands.be, Willhaben.at | Tier 2 / 3 |
-| **Poland (Benchmark)** | 🇵🇱 Poland | **Otomoto.pl** | Benchmark Median Price Generator |
+The system continuously monitors automotive portals across 7+ European countries, detects local price anomalies, calculates customs, excise, and logistics expenses, and delivers them to users via Telegram Supergroup Topics / Web Gateway.
 
 ---
 
-## 🛡️ 2. Scraping Architecture & Anti-Bot Strategy
+## 🏗️ 1. System Architecture & Server Infrastructure
 
-* **Tier 1 (Simple HTML):** Minimal bot protection, static pages (`SS.com`, `Bazos.sk`, `Bazos.cz`) — `curl_cffi` + `selectolax.lexbor` parser (60–90 seconds).
-* **Tier 2 (Moderate Protection):** Lightweight JS / Cookie / User-Agent filtering (`Autoplius.lt`, `Sauto.cz`) — `curl_cffi` (Chrome Impersonation) + HTTP/2 (90–120 seconds).
-* **Tier 3 (Aggressive Protection):** Cloudflare / DataDome / Akamai (`Mobile.de`, `Otomoto.pl`, `Leboncoin.fr`, `Subito.it`) — `curl_cffi` browser impersonation and mobile API structures (120–180 seconds).
-* **Delta-Scanning:** Rather than full site scraping, only the first 10–25 listings on page 1 sorted by `sort=created_desc` are fetched.
-* **Deduplication:** Every incoming listing is checked against unique `(platform, external_id)` keys in SQLite `seen_listings`.
+* ☁️ **Hosting & Server:** **Microsoft Azure Cloud (Azure Virtual Machine / Ubuntu Server 22.04/24.04 LTS)**.
+* ⚡ **Execution Model:** 24/7 continuous asynchronous execution via `systemd` services or Docker containers.
+* 🔄 **Event Loop:** Python `asyncio` single-core asynchronous architecture — Telegram Bot (`aiogram 3`), Background Scraper (`APScheduler`), and Web Admin Panel (`FastAPI` + `Uvicorn`) run concurrently in the same event loop without blocking.
 
----
 
-## 💰 3. Arbitrage & Margin Calculation Engine
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## 🏗️ Detailed System Architecture & Azure Infrastructure
 
-For each foreign listing, the algorithm fetches the median market price in Poland (**Otomoto.pl**) and calculates net profit using this formula:
+The following diagram illustrates the complete end-to-end architecture of the Pan-European Car Arbitrage and Live Scanner system running 24/7 on **Microsoft Azure Cloud**.
 
-$$\text{Net Profit} = \text{Poland Median Selling Price (EUR)} - (\text{Purchase Price} + \text{Logistics} + \text{Excise Tax} + \text{Registration})$$
+```mermaid
+graph TD
+    subgraph Azure ["Microsoft Azure VM (Ubuntu Server)"]
+        
+        subgraph Web ["Web & Admin Panel"]
+            FastAPI["FastAPI Application"]
+            Gateway["Click Redirect Gateway"]
+        end
 
-### Logistics Costs (Dynamic Regional Rates):
-* **Baltics (Lithuania / Latvia / Estonia):** $\approx 400\text{ EUR}$
-* **Slovakia / Czechia:** $\approx 300\text{ EUR}$
-* **Germany:** $\approx 500\text{ EUR}$
-* **France / Italy / Netherlands / Spain:** $\approx 850\text{ EUR}$
-* **Other:** $\approx 500\text{ EUR}$
+        subgraph Bot ["Telegram Bot Layer"]
+            Aiogram["Aiogram 3 Bot Core"]
+            FSM["FSM Filter Manager"]
+            Topics["Forum Topics Automator"]
+        end
 
-### Polish Excise Duty (Akcyza):
-* Engine capacity $\le 2.0\text{L}$: **$3.1\%$**
-* Engine capacity $> 2.0\text{L}$: **$18.6\%$**
-* Hybrid ($\le 2.0\text{L}$): **$1.55\%$**
-* Hybrid ($> 2.0\text{L}$): **$9.3\%$**
-* Full Electric (EV): **$0\%$**
-* Polish registration and initial technical inspection: **~300 PLN (~70 EUR)**
+        subgraph Engine ["Core Engine"]
+            Scheduler["APScheduler"]
+            Arbitrage["Arbitrage Calculator"]
+        end
 
-> 🔥 **Hot Deals:** If $\text{Net Profit} \ge 1,500\text{ EUR}$ or price is $\ge 15\%$ below market value, the listing is automatically forwarded to the **`#HotDeals`** topic!
+        subgraph Scrapers ["Pan-European Scrapers & Anti-Bot"]
+            ProxyPool["Intelligent Proxy Pool"]
+            Tier1["Tier 1: SS.com, Bazos.sk, Bazos.cz"]
+            Tier2["Tier 2: Autoplius.lt, Sauto.cz"]
+            Tier3["Tier 3: Mobile.de, Kleinanzeigen, Leboncoin, Subito"]
+            Otomoto["Otomoto.pl Benchmark"]
+        end
 
-----
+        Database[("aiosqlite Database (WAL Mode)")]
+    end
 
-## 🏛️ 4. Telegram Forum & Dynamic Topic Architecture
-
-Telegram Group: `@doogagauto` (Supergroup with Topics enabled)
-
-### Static Topics:
-* ⚙️ **`#Settings`** (ID: Topic 2): User bot controls, new filter configuration, and status monitoring.
-* 🔥 **`#HotDeals`** (ID: Topic 4): High-arbitrage anomaly deals across Schengen with $\ge 15\%$ discount or net profit $\ge 1,500\text{ EUR}$.
-* 📊 **`#MarketPrices`** (ID: Topic 6): Polish median price benchmark reference cards.
-* 💬 **`#Community`** (ID: Topic 12): Open discussion for buyers and flippers.
-
-### Dynamic Topics (Filter-Based):
-When a user sets up a search filter, the bot calls Telegram's `createForumTopic`:
-* **Format:** `🚗 [{Country Code}] {Make} {Model} (<{Budget} €)`
-* **Example:** `🚗 [LV] Toyota Prius (<10k €)` or `🚙 [DE] BMW 520 (<15k €)`
-* Listings matching the filter are delivered exclusively to that Topic ID (`message_thread_id`). When the user deletes the filter, the bot executes `closeForumTopic` and archives the filter in the database.
-
----
-
-## 📂 5. Project Directory Structure
-
-```
-doogagauto/
-├── config/
-│   ├── __init__.py
-│   └── settings.py              # Environment variables, country and logistics rates
-├── database/
-│   ├── __init__.py
-│   ├── db.py                    # aiosqlite async connection and auto-migration
-│   └── queries.py               # Filter, listing, and benchmark queries
-├── scrapers/
-│   ├── __init__.py
-│   ├── base_scraper.py          # Abstract Base Scraper class
-│   ├── baltic/
-│   │   ├── __init__.py
-│   │   ├── ss_latvia.py         # SS.com
-│   │   └── autoplius_lt.py      # Autoplius.lt
-│   ├── central/
-│   │   ├── __init__.py
-│   │   ├── bazos_sk.py          # Bazos.sk
-│   │   ├── bazos_cz.py          # Bazos.cz
-│   │   └── sauto_cz.py          # Sauto.cz
-│   ├── western/
-│   │   ├── __init__.py
-│   │   ├── mobile_de.py         # Mobile.de
-│   │   ├── kleinanzeigen_de.py  # Kleinanzeigen.de
-│   │   ├── leboncoin_fr.py      # Leboncoin.fr
-│   │   └── subito_it.py         # Subito.it
-│   └── poland_benchmarks/
-│       ├── __init__.py
-│       └── otomoto_pl.py        # Otomoto.pl median benchmark generator
-├── bot/
-│   ├── __init__.py
-│   ├── handlers/
-│   │   ├── __init__.py
-│   │   ├── filter_fsm.py        # Aiogram 3 FSM (filter creation dashboard)
-│   │   ├── management.py        # Settings, Hot Deals, topics management
-│   │   └── admin.py             # Administrative controls & broadcast wizard
-│   ├── locales/
-│   │   ├── __init__.py
-│   │   └── texts.py             # Multilingual localization dictionaries (EN, PL, RU)
-│   ├── middlewares/
-│   │   ├── __init__.py
-│   │   └── i18n.py              # User language middleware
-│   └── views/
-│       ├── __init__.py
-│       └── listing_card.py      # Telegram HTML rich listing cards & monetization
-├── web/
-│   ├── __init__.py
-│   ├── app.py                  # FastAPI application factory
-│   ├── auth.py                 # Admin session token authentication
-│   ├── routes/
-│   │   ├── __init__.py
-│   │   ├── admin.py             # Admin panel views & actions
-│   │   ├── gateway.py           # Click redirect tracking & partner affiliate gateway
-│   │   └── api.py               # JSON API endpoints
-│   └── templates/               # Modern Glassmorphic UI templates
-├── engine/
-│   ├── __init__.py
-│   ├── arbitrage.py             # Net margin, customs, and excise calculation
-│   ├── broadcaster.py           # Background mass broadcast engine with jitter
-│   └── scheduler.py             # Async cyclical scraping & notification scheduler
-├── .env
-├── requirements.txt
-├── test_telegram_upgrade.py    # Specification test suite
-├── test_web_admin.py           # Web admin & gateway test suite
-├── test_system.py              # Full end-to-end scraper & arithmetic test
-└── main.py                     # Entry point launching bot and web admin
+    External["External Schengen Classifieds"] --> ProxyPool
+    ProxyPool --> Tier1
+    ProxyPool --> Tier2
+    ProxyPool --> Tier3
+    ProxyPool --> Otomoto
+    
+    Scheduler --> Scrapers
+    Tier1 --> Arbitrage
+    Tier2 --> Arbitrage
+    Tier3 --> Arbitrage
+    Otomoto --> Arbitrage
+    
+    Arbitrage --> Database
+    FastAPI --> Database
+    Aiogram --> Database
+    FSM --> Topics
+    
+    Arbitrage --> Aiogram
+    Aiogram --> TelegramGroup["Telegram Supergroup (Forum Topics)"]
+    FastAPI --> AdminPanel["Admin Browser (Dashboard & Proxies)"]
+    Gateway --> UserClicks["Affiliate & Sponsor Redirects"]
 ```
 
+## 
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+## 🧰 2. Technology Stack & Libraries
+
+| Category | Technology / Library | Purpose |
+| :--- | :--- | :--- |
+| **Core Language** | Python 3.11 / 3.12+ | Core system engine and asynchronous orchestration |
+| **Web & Templates** | HTML5, TailwindCSS, Jinja2, Chart.js | Modern dark-themed Admin Panel and analytics charts |
+| **Bot Framework** | `aiogram >= 3.15.0` | Telegram Bot API 7.0+ (Forum Topics, FSM, Middleware support) |
+| **HTTP & Anti-Bot** | `curl_cffi >= 0.7.0` | TLS/JA3/HTTP2 Chrome 120 impersonation (Cloudflare/DataDome bypass) |
+| **HTML Parser** | `selectolax >= 1.0.0` | Ultra-fast Lexbor HTML parsing engine written in C |
+| **Database** | `aiosqlite >= 0.20.0` | Asynchronous SQLite with PRAGMA WAL high-performance read/write |
+| **Web Framework** | `fastapi >= 0.110.0`, `uvicorn` | Admin panel, JSON API, click tracking, and affiliate redirect gateway |
+| **Scheduler** | `apscheduler >= 3.10.0` | Multi-platform scraper and periodic maintenance jobs |
+| **Settings** | `pydantic-settings >= 2.2.0` | Robust type validation and `.env` configuration management |
+
 ---
 
-## 🚀 6. Getting Started
+## 🛡️ 3. Anti-Bot Strategy & Scraper Tiers
 
-```bash
-# 1. Run test suite:
-python test_system.py
+European automotive platforms have varying security barriers. The system operates on a 3-tier architecture:
 
-# 2. Run Telegram upgrade tests:
-python test_telegram_upgrade.py
+* 🟢 **Tier 1 (Minimal Protection):** `SS.com` (Latvia), `Bazos.sk` (Slovakia), `Bazos.cz` (Czechia).
+  - Simple HTTP requests and `selectolax.lexbor` processing with a 60–90 second interval.
+* 🟡 **Tier 2 (Moderate Protection):** `Autoplius.lt` (Lithuania), `Sauto.cz` (Czechia).
+  - Cookie, User-Agent, and HTTP/2 header synchronization.
+* 🔴 **Tier 3 (Aggressive Protection):** `Mobile.de`, `Kleinanzeigen.de` (Germany), `Leboncoin.fr` (France), `Subito.it` (Italy), `Otomoto.pl` (Poland).
+  - **Protection:** Cloudflare Turnstile, DataDome, Akamai Bot Manager.
+  - **Solution:** `curl_cffi` is used instead of standard `requests` or `httpx`. TLS Fingerprints (JA3/JA4) and HTTP/2 frame sequences are simulated to mimic a real Google Chrome 120 browser.
+* ⚡ **Delta-Scanning:** Fetches only the top 10–25 newly posted listings (`sort=created_desc`) rather than full site crawling.
+* 🧹 **Deduplication:** Every listing is checked against a unique `(platform, external_id)` key in SQLite to prevent duplicate processing.
 
-# 3. Run Web Admin tests:
-python test_web_admin.py
+---
 
-# 4. Launch bot & web server:
-python main.py
-```
+## 🌐 4. Intelligent Proxy Pool Architecture
+
+The system utilizes a dynamic proxy management infrastructure to prevent IP bans:
+* **Pool Size:** Supports 100 – 1000+ active HTTP/HTTPS/SOCKS5 proxies.
+* **Rotation Strategies:**
+  1. `round_robin` — Equal sequential distribution.
+  2. `random` — Random selection to obscure tracking patterns.
+* **Application Modes:**
+  - `protected_only` — Proxies are used exclusively on Tier-3 platforms (Cloudflare/DataDome protected like Mobile.de, Leboncoin, etc.), preserving resources on Tier-1 sites.
+  - `all` — All requests are fully anonymized.
+* **Healthcheck & Latency Monitor:**
+  - The web panel and background workers test latency (ms), success/fail counts for each proxy, automatically dropping faulty ones from circulation.
+
+---
+
+## 💰 5. Pricing & Arbitrage Calculation Algorithm
+
+When a foreign listing is discovered, it is compared against the Polish market median (**Otomoto.pl**):
+
+$$\text{Net Profit} = \text{Otomoto Median Price (EUR)} - \text{Total Landed Cost}$$
+
+Where:
+$$\text{Landed Cost} = \text{Purchase Price} + \text{Logistics} + \text{Excise Tax (Akcyza)} + \text{Registration}$$
+
+### 🚚 1. Dynamic Logistics Costs:
+- 🇱🇻 🇱🇹 🇪🇪 Baltics: **€400**
+- 🇨🇿 🇸🇰 Czechia / Slovakia: **€300**
+- 🇩🇪 Germany: **€500**
+- 🇫🇷 🇮🇹 🇪🇸 🇳🇱 France, Italy, Spain, Netherlands: **€850**
+- 🌐 Other: **€500**
+
+### 📑 2. Polish Excise Tax (Akcyza) Engine:
+The engine analyzes text and fuel types using Regex rules:
+* 🔌 **Full Electric (EV):** **0%**
+* ⚡ **Hybrid ($\le 2.0\text{L}$):** **1.55%**
+* ⚡ **Hybrid ($> 2.0\text{L}$):** **9.3%**
+* ⛽ **Standard ICE ($\le 2.0\text{L}$):** **3.1%**
+* ⛽ **High-Capacity ICE ($> 2.0\text{L}$):** **18.6%**
+* 📝 **Polish technical inspection and state registration:** **~300 PLN (~€70)**
+
+> 🔥 **Hot Deals Algorithm:** If $\text{Net Profit} \ge €1,500$ or the purchase price is $\ge 15\%$ below the market median, the listing is instantly forwarded to the dedicated **#HotDeals** stream!
+
+---
+
+## 🏛️ 6. Telegram Supergroup Forum Architecture
+
+The system is fully integrated with Telegram's **Forum Topics** technology:
+* ⚙️ `#Settings` (Topic ID: 2): Bot settings and filter creation panel.
+* 🔥 `#HotDeals` (Topic ID: 4): High-margin anomaly deals across Pan-Europe.
+* 📊 `#MarketPrices` (Topic ID: 6): Polish median price benchmark references.
+* 💬 `#Community` (Topic ID: 12): Member discussion lounge.
+* 🚗 **Dynamic Filters:** When a user sets up a filter, the bot automatically creates a new forum topic via Telegram API:
+  - Format: `🚗 [{Country}] {Make} {Model} (<{Budget} €)`
+  - Example: `🚗 [DE] BMW 520 (<15k €)`
+  - When the filter is deleted, the topic is archived and closed (`closeForumTopic`).
+
+---
+
+## 💻 7. Web Admin Panel & Monetization Gateway
+
+Browser-based management center (`http://<azure-ip>:port/subfolder`):
+1. **Dashboard:** Active users, live listing streams, clicks, and earnings charts (Chart.js).
+2. **Monetization & Sponsor:** Ability to append sponsor text, partner call-to-action buttons, and internal redirect links (`/r/{listing_id}`) to listing cards.
+3. **Broadcaster:** Anti-Flood algorithm with randomized jitters to safely broadcast notifications to all topics or users.
+4. **Proxy Management:** One-click bulk upload of proxy lists via TXT files and live testing.
+
+
+
+
+
+
